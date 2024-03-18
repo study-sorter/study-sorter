@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/tlo_aplikacja"
+    tools:context=".Rejestracja">
+
+    <TextView
+
+        android:id="@+id/powitanie"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="246dp"
+        android:fontFamily="monospace"
+        android:text="@string/teskt_Rejestracja"
+        android:textSize="20sp"
+
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <EditText
+        android:id="@+id/Email_Rejestracja"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="49dp"
+        android:background="@color/tlo_polaTekstowe"
+        android:ems="10"
+        android:hint="@string/mail"
+        android:inputType="textEmailAddress"
+        android:padding="10dp"
+        android:textSize="24sp"
+        app:layout_constraintEnd_toEndOf="@+id/powitanie"
+        app:layout_constraintStart_toStartOf="@+id/powitanie"
+        app:layout_constraintTop_toBottomOf="@+id/powitanie" />
+
+    <EditText
+        android:id="@+id/haslo_Rejestracja"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:ems="10"
+        android:hint="@string/haslo"
+        android:inputType="textPassword"
+        android:textSize="24sp"
+        android:background="@color/tlo_polaTekstowe"
+        android:padding="10dp"
+        app:layout_constraintEnd_toEndOf="@+id/Email_Rejestracja"
+        app:layout_constraintStart_toStartOf="@+id/Email_Rejestracja"
+        app:layout_constraintTop_toBottomOf="@+id/Email_Rejestracja" />
+
+    <Button
+        android:id="@+id/zarejestruj_Rejestracja"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:backgroundTint="@color/tlo_przycisk"
+        android:fontFamily="serif"
+        android:text="@string/zarejestruj"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:onClick="rejestracja"
+        app:layout_constraintEnd_toEndOf="@+id/haslo_Rejestracja"
+        app:layout_constraintStart_toStartOf="@+id/haslo_Rejestracja"
+        app:layout_constraintTop_toBottomOf="@+id/haslo_Rejestracja" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -2,7 +2,7 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="tlo_aplikacja">#6bffb7</color>
+    <color name="tlo_aplikacja">#73D3B6</color>
     <color name="tlo_polaTekstowe">#F4F4F4</color>
     <color name="tlo_przycisk">#08221e</color>
 </resources>

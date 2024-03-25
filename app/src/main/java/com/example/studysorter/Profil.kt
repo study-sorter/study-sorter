@@ -29,6 +29,7 @@ class Profil : AppCompatActivity() {
         setContentView(R.layout.activity_profil)
 
         userEmailTextView = findViewById(R.id.viewMail)
+        val userNickTextView: TextView = findViewById(R.id.nick) // Add this line
         storageReference = FirebaseStorage.getInstance().reference
 
         val changeAvatarButton: Button = findViewById(R.id.zmiana)
@@ -47,22 +48,28 @@ class Profil : AppCompatActivity() {
             val userEmail = currentUser.email
             userEmailTextView.text = userEmail
 
-            // Fetch the avatar URL from Firestore
-            val userDoc = chmura.collection("avatars").document(currentUser.uid)
+
+            val userDoc = chmura.collection("users").document(currentUser.uid)
             userDoc.get().addOnSuccessListener { document ->
                 if (document != null) {
                     val avatarUrl = document.getString("avatarUrl")
+                    val nickname = document.getString("nickname")
+
                     if (avatarUrl != null) {
                         val avatarImageButton: ImageView = findViewById(R.id.avatar)
                         Glide.with(this).load(avatarUrl).into(avatarImageButton)
+                    }
+
+                    if (nickname != null) {
+                        userNickTextView.text = nickname
                     }
                 }
             }
         } else {
             userEmailTextView.text = "Brak zalogowanego użytkownika"
         }
-
     }
+
 
     private fun chooseImageFromGallery() {
         val intent = Intent(Intent.ACTION_GET_CONTENT)
@@ -92,12 +99,12 @@ class Profil : AppCompatActivity() {
             val fileRef = storageReference.child("avatars").child(fileName)
             val uploadTask = fileRef.putFile(selectedImageUri!!)
             uploadTask.addOnSuccessListener {
-                // Get the download URL of the uploaded image
+
                 fileRef.downloadUrl.addOnSuccessListener { uri ->
                     val avatarImageButton: ImageView = findViewById(R.id.avatar)
                     avatarImageButton.setImageURI(selectedImageUri)
 
-                    // Save the avatar URL in Firestore
+                    //zapisz url avatara w firestore
                     val userDoc = chmura.collection("avatars").document(currentUser.uid)
                     val data = hashMapOf(
                         "avatarUrl" to uri.toString()

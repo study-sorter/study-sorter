@@ -41,6 +41,8 @@ import com.example.studysorter.ui.theme.StudySorterTheme
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
+import com.google.firebase.firestore.FirebaseFirestore
+
 
 class Rejestracja : AppCompatActivity() {
     private val AuthInst :FirebaseAuth = FirebaseAuth.getInstance()
@@ -98,6 +100,8 @@ private fun zarejestru() {
     var haslo by remember { mutableStateOf("") }
     var haslopowt by remember { mutableStateOf("") }
     var Nickname by remember { mutableStateOf("") }
+    val chmura = FirebaseFirestore.getInstance()
+
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -166,7 +170,7 @@ private fun zarejestru() {
                 }
             )
         }
-        Box {
+        /*Box {
             OutlinedTextField(
                 value = haslopowt,
                 onValueChange = {
@@ -196,7 +200,7 @@ private fun zarejestru() {
                     }
                 }
             )
-        }
+        }*/
         Row(verticalAlignment = Alignment.CenterVertically) {
             /*
             Box {
@@ -229,14 +233,12 @@ private fun zarejestru() {
         }
 
         Button(
-            onClick =
-            {
+            onClick = {
                 if (mail.isNotEmpty() && haslo.isNotEmpty()) {
                     FirebaseAuth.getInstance().createUserWithEmailAndPassword(mail, haslo)
                         .addOnSuccessListener {
                             val currentUser = Firebase.auth.currentUser
                             currentUser?.let {
-
                                 val name = currentUser.displayName
                                 val email = currentUser.email
                                 val photoUrl = currentUser.photoUrl
@@ -244,26 +246,43 @@ private fun zarejestru() {
                                 val emailVerified = currentUser.isEmailVerified
 
                                 val uid = currentUser.uid
+
+                                // Create a new user object
+                                val nowy: User = User(currentUser.email.toString(), currentUser.uid, Nickname)
+
+                                // Save the user to Firestore
+                                val userMap = hashMapOf(
+                                    "nickname" to Nickname,
+                                    "email" to currentUser.email
+                                )
+
+                                chmura.collection("users").document(currentUser.uid)
+                                    .set(userMap)
+                                    .addOnSuccessListener {
+                                        Log.d("Firestore", "DocumentSnapshot successfully written!")
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Log.w("Firestore", "Error writing document", e)
+                                    }
                             }
-                            val nowy:User = User(currentUser!!.email.toString(),currentUser.uid,Nickname)//
-                            TODO()
 
-
-
-                            mycontext.startActivity(Intent(mycontext,Logowanie::class.java))
+                            mycontext.startActivity(Intent(mycontext, Logowanie::class.java))
                         }
-                        .addOnFailureListener{
-                            Log.d("LOG_DEBUD_REJESTRACJA_FIREBASE",it.message.toString())
+                        .addOnFailureListener { exception ->
+                            Log.d("LOG_DEBUD_REJESTRACJA_FIREBASE", exception.message.toString())
+                            Log.e("Registration", "Failed: ${exception.message}", exception)
+                            Toast.makeText(mycontext, "Registration failed: ${exception.message}", Toast.LENGTH_SHORT).show()
                         }
+
                 }
             },
             Modifier
                 .width(OutlinedTextFieldDefaults.MinWidth)
                 .height(OutlinedTextFieldDefaults.MinHeight - 10.dp),
             colors = ButtonDefaults.buttonColors(containerColor = colorResource(id = R.color.tlo_przycisk))
-
         ) {
             Text(stringResource(id = R.string.stworz))
         }
+
     }
 }

@@ -99,13 +99,12 @@ class Profil : AppCompatActivity() {
             val fileRef = storageReference.child("avatars").child(fileName)
             val uploadTask = fileRef.putFile(selectedImageUri!!)
             uploadTask.addOnSuccessListener {
-
                 fileRef.downloadUrl.addOnSuccessListener { uri ->
                     val avatarImageButton: ImageView = findViewById(R.id.avatar)
                     avatarImageButton.setImageURI(selectedImageUri)
 
-                    //zapisz url avatara w firestore
-                    val userDoc = chmura.collection("avatars").document(currentUser.uid)
+                    // Save avatar URL to Firestore
+                    val userDoc = chmura.collection("users").document(currentUser.uid)
                     val data = hashMapOf(
                         "avatarUrl" to uri.toString()
                     )
@@ -121,4 +120,5 @@ class Profil : AppCompatActivity() {
         } else {
             Toast.makeText(this, "Brak zalogowanego użytkownika lub nie wybrano zdjęcia", Toast.LENGTH_SHORT).show()
         }
-    }}
+    }
+    }

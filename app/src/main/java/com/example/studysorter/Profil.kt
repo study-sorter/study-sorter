@@ -13,6 +13,10 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
+import com.bumptech.glide.Glide
+import com.google.firebase.firestore.SetOptions
+
+
 
 class Profil : AppCompatActivity() {
     private val chmura = FirebaseFirestore.getInstance()
@@ -34,17 +38,30 @@ class Profil : AppCompatActivity() {
 
         val currentUser = FirebaseAuth.getInstance().currentUser
 
-        if (currentUser != null) {
-            val userEmail = currentUser.email
-            userEmailTextView.text = userEmail
-        } else {
-            userEmailTextView.text = "Brak zalogowanego użytkownika"
-        }
-
         val saveButton: Button = findViewById(R.id.saveButton)
         saveButton.setOnClickListener {
             saveImageUriToFirebase()
         }
+
+        if (currentUser != null) {
+            val userEmail = currentUser.email
+            userEmailTextView.text = userEmail
+
+            // Fetch the avatar URL from Firestore
+            val userDoc = chmura.collection("avatars").document(currentUser.uid)
+            userDoc.get().addOnSuccessListener { document ->
+                if (document != null) {
+                    val avatarUrl = document.getString("avatarUrl")
+                    if (avatarUrl != null) {
+                        val avatarImageButton: ImageView = findViewById(R.id.avatar)
+                        Glide.with(this).load(avatarUrl).into(avatarImageButton)
+                    }
+                }
+            }
+        } else {
+            userEmailTextView.text = "Brak zalogowanego użytkownika"
+        }
+
     }
 
     private fun chooseImageFromGallery() {
@@ -75,13 +92,17 @@ class Profil : AppCompatActivity() {
             val fileRef = storageReference.child("avatars").child(fileName)
             val uploadTask = fileRef.putFile(selectedImageUri!!)
             uploadTask.addOnSuccessListener {
-
                 // Get the download URL of the uploaded image
                 fileRef.downloadUrl.addOnSuccessListener { uri ->
                     val avatarImageButton: ImageView = findViewById(R.id.avatar)
-
-                    // Set the selected image to the avatar ImageButton
                     avatarImageButton.setImageURI(selectedImageUri)
+
+                    // Save the avatar URL in Firestore
+                    val userDoc = chmura.collection("avatars").document(currentUser.uid)
+                    val data = hashMapOf(
+                        "avatarUrl" to uri.toString()
+                    )
+                    userDoc.set(data, SetOptions.merge())
 
                     Toast.makeText(this, "Zmiana avatara zakończona pomyślnie", Toast.LENGTH_SHORT).show()
                 }.addOnFailureListener { exception ->
@@ -93,9 +114,4 @@ class Profil : AppCompatActivity() {
         } else {
             Toast.makeText(this, "Brak zalogowanego użytkownika lub nie wybrano zdjęcia", Toast.LENGTH_SHORT).show()
         }
-    }
-
-
-
-
-}
+    }}

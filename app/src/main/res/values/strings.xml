@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Study sorter</string>
+    <string name="powitanie">Witaj w aplikacji</string>
+    <string name="mail">Email</string>
+    <string name="haslo">Hasło</string>
+    <string name="zaloguj">Zaloguj się</string>
+    <string name="rejestracja">Rejestracja</string>
+    <string name="zarejestruj">Zarejestruj się</string>
+    <string name="teskt_Rejestracja">podaj swoje dane</string>
+    <string name="title_activity_main2">MainActivity2</string>
+    <string name="brak_konta">Nie masz jeszcze konta?</string>
+    <string name="stworz">Stwórz konto</string>
+</resources>

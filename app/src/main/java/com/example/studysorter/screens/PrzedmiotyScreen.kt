@@ -11,9 +11,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.*
 
-
+@Preview
+@Composable
+fun PrzedmiotyScreenPreview() {
+    PrzedmiotyScreen(innerPadding = PaddingValues(16.dp))
+}
 @Composable
 fun PrzedmiotyScreen(innerPadding: PaddingValues) {
     Column(

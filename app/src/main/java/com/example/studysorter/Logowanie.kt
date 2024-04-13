@@ -60,7 +60,7 @@ class Logowanie : AppCompatActivity() {
 
             }
         }
-// tymczasowe można usunąć komentarze
+// tymczasowe można usunąć komentarze yyy nie wiem czy to zadziała na razie nie ruszać XD
 //        FirebaseAuth.getInstance().currentUser?.let { auth -> //jeśli null to się nie wykona
 //            intent = Intent(this, MainActivity::class.java).apply {
 //                flags = (Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)//wyczyszczenie tej aktywności czyli że nie można się tu cofnąć
@@ -167,7 +167,11 @@ fun Zaloguj() {
                         }
                         .addOnFailureListener {
                             Log.d("LOG_DEBUD_LOGOWANIE", it.message.toString())
+                            Toast.makeText(mycontext, "coś poszło nie tak przy logowaniu", Toast.LENGTH_SHORT).show()
+
                         }
+                }else{
+                    Toast.makeText(mycontext, "nie podałeś/aś hasła lub e-maila", Toast.LENGTH_SHORT).show()
                 }
             },
             Modifier

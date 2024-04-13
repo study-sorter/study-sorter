@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.ExposedDropdownMenuDefaults.outlinedTextFieldColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -25,6 +26,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
@@ -61,29 +63,7 @@ class Rejestracja : AppCompatActivity() {
 
             }
         }
-        /* do usunięcia
-        setContentView(R.layout.activity_rejestracja)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
-    }
-    fun rejestracja(view: View) {//pobiera maila i haslo i loguje osobe na razie bez sprawdzania czegokolwiek procz pustego
-        val email: String = findViewById<TextView>(R.id.Email_Logowanie).text.toString()
-        val haslo: String = findViewById<TextView>(R.id.Haslo_Logowanie).text.toString()
-        if (email.isNotEmpty() && haslo.isNotEmpty()) {
-            AuthInst.createUserWithEmailAndPassword(email, haslo)
-                .addOnSuccessListener {
-                    intent = Intent(this, Logowanie::class.java)
-                    startActivity(intent)
-                }
-                .addOnFailureListener{
-                    Log.d("LOG_DEBUD_REJESTRACJA",it.message.toString())
-                    Toast.makeText(this,it.message.toString(), Toast.LENGTH_LONG).show()
-                }
-        }
-         */
+
     }
 
 
@@ -95,19 +75,27 @@ data class User(val Email:String,val User_UID:String, val Nickname:String)
 @Composable
 private fun zarejestru() {
     val mycontext = LocalContext.current
-    var hasloWidocznosc by rememberSaveable { mutableStateOf(false) }
+
     var mail by remember { mutableStateOf("") }
     var haslo by remember { mutableStateOf("") }
     var haslopowt by remember { mutableStateOf("") }
     var Nickname by remember { mutableStateOf("") }
     val chmura = FirebaseFirestore.getInstance()
 
+    var hasloWidocznosc by rememberSaveable { mutableStateOf(false) }
+    var haslopowWidocznosc by rememberSaveable { mutableStateOf(false) }
 
+
+    val isNicknameCorrect = remember { mutableStateOf(true)}
+    val isMailCorrect = remember { mutableStateOf(true)}
+    val isHasloCorrect = remember { mutableStateOf(true)}
+    val isHasloPowtCorrect = remember { mutableStateOf(true)}
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier.wrapContentHeight().fillMaxSize()
-
+        modifier = Modifier
+            .wrapContentHeight()
+            .fillMaxSize()
     ) {
         Box {
             Text(
@@ -116,45 +104,56 @@ private fun zarejestru() {
                 fontSize = 20.sp
             )
         }
-        Box {
+        /*co się znajduje w danym boxie można sobie zwinąć i kod jest czytelniejszy*/
+        /*nick*/Box {
             OutlinedTextField(
                 value = Nickname,
-                onValueChange = { Nickname = it },
+                onValueChange = {
+                    Nickname = it
+                    isNicknameCorrect.value = true
+                },
                 modifier = Modifier.padding(top = 50.dp),
                 singleLine = true,
                 placeholder = { Text(text = "Nickname") },
-                colors = TextFieldDefaults.colors(
+                colors = OutlinedTextFieldDefaults.colors(
                     unfocusedContainerColor = colorResource(id = R.color.tlo_polaTekstowe),
                     focusedContainerColor = colorResource(id = R.color.tlo_polaTekstowe),
-                ),
+                    unfocusedBorderColor = if (isNicknameCorrect.value)  Color.Unspecified else Color.Red ,
+                )
             )
         }
-        Box {
-            OutlinedTextField(
+        /*mail*/Box {
+           OutlinedTextField(
                 value = mail,
-                onValueChange = { mail = it },
+                onValueChange = { mail = it
+                                isMailCorrect.value = true},
                 modifier = Modifier.padding(top = 15.dp),
                 singleLine = true,
                 placeholder = { Text(text = stringResource(id = R.string.mail)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                colors = TextFieldDefaults.colors(
+                colors = OutlinedTextFieldDefaults.colors(
                     unfocusedContainerColor = colorResource(id = R.color.tlo_polaTekstowe),
                     focusedContainerColor = colorResource(id = R.color.tlo_polaTekstowe),
+                    unfocusedBorderColor = if (isMailCorrect.value)  Color.Unspecified else Color.Red ,
                 )
             )
         }
-        Box {
+        /*haslo*/Box {
             OutlinedTextField(
                 value = haslo,
-                onValueChange = { haslo = it },
+                onValueChange = {
+                    haslo = it
+                    isHasloCorrect.value = true
+                },
                 modifier = Modifier.padding(top =15.dp),
                 singleLine = true,
                 placeholder = { Text(text = stringResource(id = R.string.haslo)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 visualTransformation = if (hasloWidocznosc) VisualTransformation.None else PasswordVisualTransformation(),
-                colors = TextFieldDefaults.colors(
+                colors = OutlinedTextFieldDefaults.colors(
                     unfocusedContainerColor = colorResource(id = R.color.tlo_polaTekstowe),
                     focusedContainerColor = colorResource(id = R.color.tlo_polaTekstowe),
+                    unfocusedBorderColor = if (isHasloCorrect.value)  Color.Unspecified else Color.Red ,
                 ),
                 trailingIcon = {
                     val image = if (hasloWidocznosc)
@@ -170,38 +169,38 @@ private fun zarejestru() {
                 }
             )
         }
-        /*Box {
+        /*powtorz hasło*/Box {
             OutlinedTextField(
                 value = haslopowt,
                 onValueChange = {
                     haslopowt = it
-                    TODO("dodanie sprawdzania hasła")
-
-                                },
-                modifier = Modifier.padding(top = 15.dp),
+                    isHasloPowtCorrect.value  =true
+                },
+                modifier = Modifier.padding(top = 15.dp).padding(bottom = 20.dp),
                 singleLine = true,
                 placeholder = { Text(text = "Powtórz hasło") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                visualTransformation = if (hasloWidocznosc) VisualTransformation.None else PasswordVisualTransformation(),
-                colors = TextFieldDefaults.colors(
+                visualTransformation = if (haslopowWidocznosc) VisualTransformation.None else PasswordVisualTransformation(),
+                colors = OutlinedTextFieldDefaults.colors(
                     unfocusedContainerColor = colorResource(id = R.color.tlo_polaTekstowe),
                     focusedContainerColor = colorResource(id = R.color.tlo_polaTekstowe),
+                    unfocusedBorderColor = if (isHasloPowtCorrect.value)  Color.Unspecified else Color.Red ,
                 ),
                 trailingIcon = {
-                    val image = if (hasloWidocznosc)
+                    val image = if (haslopowWidocznosc)
                         Icons.Outlined.Visibility
                     else Icons.Outlined.VisibilityOff
 
                     // Please provide localized description for accessibility services
-                    val description = if (hasloWidocznosc) "Hide password" else "Show password"
+                    val description = if (haslopowWidocznosc) "Hide password" else "Show password"
 
-                    IconButton(onClick = { hasloWidocznosc = !hasloWidocznosc }) {
+                    IconButton(onClick = { haslopowWidocznosc = !haslopowWidocznosc }) {
                         Icon(imageVector = image, description)
                     }
                 }
             )
-        }*/
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        }
+        /*stare można wyrzucić jest tu imie i nazwisko*/Row(verticalAlignment = Alignment.CenterVertically) {
             /*
             Box {
                 OutlinedTextField(
@@ -231,58 +230,93 @@ private fun zarejestru() {
             }
              */
         }
-
-        Button(
+        /*przycisk potwierdziający*/Button(
             onClick = {
-                if (mail.isNotEmpty() && haslo.isNotEmpty()) {
-                    FirebaseAuth.getInstance().createUserWithEmailAndPassword(mail, haslo)
-                        .addOnSuccessListener {
-                            val currentUser = Firebase.auth.currentUser
-                            currentUser?.let {
-                                val name = currentUser.displayName
-                                val email = currentUser.email
-                                val photoUrl = currentUser.photoUrl
+                //warunki sprawdzane przed rejestracją
+                if (Nickname.isEmpty()){ isNicknameCorrect.value = false}
+                if (mail.isEmpty()){ isMailCorrect.value = false}
+                if (haslo.isEmpty()){ isHasloCorrect.value = false}
+                if (haslopowt.isEmpty()){ isHasloPowtCorrect.value = false}
+                if (!haslopowt.equals(haslo)){
+                    isHasloCorrect.value = false
+                    isHasloPowtCorrect.value = false
+                    Toast.makeText(mycontext, "hasła niezgadzają się ", Toast.LENGTH_SHORT).show()
+                }
+                if (haslo.length < 7 && isHasloCorrect.value ){
+                    isHasloCorrect.value = false
+                    isHasloPowtCorrect.value = false
+                    Toast.makeText(mycontext, "hasło jest za krótkie powinno mieć co najmniej 6 znaków ", Toast.LENGTH_SHORT).show()
+                }
 
-                                val emailVerified = currentUser.isEmailVerified
+                //sprawdzanie czy pola są wypełnione dobrze zakładając warunki sprawdzane wcześniej
+                if(
+                    isNicknameCorrect.value
+                    && isMailCorrect.value
+                    && isHasloCorrect.value
+                    && isHasloPowtCorrect.value
+                ) {
+                        FirebaseAuth.getInstance().createUserWithEmailAndPassword(mail, haslo)
+                            .addOnSuccessListener {
+                                val currentUser = Firebase.auth.currentUser
+                                currentUser?.let {
+                                    val name = currentUser.displayName
+                                    val email = currentUser.email
+                                    val photoUrl = currentUser.photoUrl
+                                    val emailVerified = currentUser.isEmailVerified
+                                    val uid = currentUser.uid
 
-                                val uid = currentUser.uid
+                                    // Create a new user object
+                                    val nowy: User = User(
+                                        currentUser.email.toString(),
+                                        currentUser.uid,
+                                        Nickname
+                                    )
 
-                                // Create a new user object
-                                val nowy: User = User(currentUser.email.toString(), currentUser.uid, Nickname)
+                                    // Save the user to Firestore
+                                    val userMap = hashMapOf(
+                                        "nickname" to Nickname,
+                                        "email" to currentUser.email
+                                    )
 
-                                // Save the user to Firestore
-                                val userMap = hashMapOf(
-                                    "nickname" to Nickname,
-                                    "email" to currentUser.email
+                                    chmura.collection("users").document(currentUser.uid)
+                                        .set(userMap)
+                                        .addOnSuccessListener {
+                                            Log.d(
+                                                "Firestore",
+                                                "DocumentSnapshot successfully written!"
+                                            )
+                                        }
+                                        .addOnFailureListener { e ->
+                                            Log.w("Firestore", "Error writing document", e)
+                                        }
+                                }
+
+                                mycontext.startActivity(Intent(mycontext, Logowanie::class.java))
+                            }
+                            .addOnFailureListener { exception ->
+                                Log.d(
+                                    "LOG_DEBUD_REJESTRACJA_FIREBASE",
+                                    exception.message.toString()
                                 )
-
-                                chmura.collection("users").document(currentUser.uid)
-                                    .set(userMap)
-                                    .addOnSuccessListener {
-                                        Log.d("Firestore", "DocumentSnapshot successfully written!")
-                                    }
-                                    .addOnFailureListener { e ->
-                                        Log.w("Firestore", "Error writing document", e)
-                                    }
+                                Log.e("Registration", "Failed: ${exception.message}", exception)
+                                Toast.makeText(
+                                    mycontext,
+                                    "Registration failed: ${exception.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
                             }
 
-                            mycontext.startActivity(Intent(mycontext, Logowanie::class.java))
-                        }
-                        .addOnFailureListener { exception ->
-                            Log.d("LOG_DEBUD_REJESTRACJA_FIREBASE", exception.message.toString())
-                            Log.e("Registration", "Failed: ${exception.message}", exception)
-                            Toast.makeText(mycontext, "Registration failed: ${exception.message}", Toast.LENGTH_SHORT).show()
-                        }
+                    }
 
-                }
             },
-            Modifier
-                .width(OutlinedTextFieldDefaults.MinWidth)
-                .height(OutlinedTextFieldDefaults.MinHeight - 10.dp),
+        Modifier
+            .width(OutlinedTextFieldDefaults.MinWidth)
+            .height(OutlinedTextFieldDefaults.MinHeight - 10.dp),
             colors = ButtonDefaults.buttonColors(containerColor = colorResource(id = R.color.tlo_przycisk))
         ) {
             Text(stringResource(id = R.string.stworz))
         }
+
 
     }
 }

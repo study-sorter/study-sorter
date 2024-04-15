@@ -25,7 +25,7 @@ fun SetUpNavGraph(
             ProfileScreen()
         }
         composable(Screens.Przedmioty.route){
-            PrzedmiotyScreen(innerPadding = innerPadding)
+            PrzedmiotyScreen()
         }
         composable(Screens.Ulubione.route){
             UlubioneScreen(innerPadding = innerPadding)

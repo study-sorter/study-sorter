@@ -40,6 +40,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.studysorter.ui.theme.StudySorterTheme
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
+import android.widget.Toast
+
 
 
 class Logowanie : AppCompatActivity() {

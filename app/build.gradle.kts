@@ -76,6 +76,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
 
     annotationProcessor ("com.github.bumptech.glide:compiler:4.12.0")
+    implementation("org.jetbrains.kotlinx", "kotlinx-coroutines-core", "1.5.2")
 
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation("com.google.android.material:material:1.11.0")

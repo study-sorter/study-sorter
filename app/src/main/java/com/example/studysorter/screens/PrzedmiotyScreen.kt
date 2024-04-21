@@ -1,6 +1,6 @@
 package com.example.studysorter.screens
 
-import androidx.compose.foundation.background
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -10,7 +10,6 @@ import androidx.compose.ui.graphics.Color
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.auth.FirebaseAuth
 import android.util.Log
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.unit.dp
@@ -19,11 +18,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 
-data class Szkola(var id: String)
+data class Szkola(var id: String,var listaSemestr:List<Semestr>)
+data class Semestr(var id:String,var listaSubject: List<Subbject>)
+data class Subbject(var id:String) //jest Subbject bo koliduje z jakąś gotow klasą
 @Composable
 fun PrzedmiotyScreen(innerPadding: PaddingValues) {
     val mycontext = LocalContext.current
@@ -32,6 +34,8 @@ fun PrzedmiotyScreen(innerPadding: PaddingValues) {
     val currentUser = FirebaseAuth.getInstance().currentUser
     var showDialog by remember { mutableStateOf(false) }
     var schoolName by remember { mutableStateOf("") }
+    var semesterName by remember { mutableStateOf("") }
+    var subjectName by remember { mutableStateOf("") }
 
     val listaSzkola: List<Szkola> by pobierzSzkoly().collectAsState(initial = emptyList())
 
@@ -41,28 +45,32 @@ fun PrzedmiotyScreen(innerPadding: PaddingValues) {
             onDismissRequest = { showDialog = false },
             title = { Text("Dodaj nazwę szkoły lub kierunku") },
             text = {
-                OutlinedTextField(
-                    value = schoolName,
-                    onValueChange = { schoolName = it },
-                    label = { Text("Nazwa szkoły lub kierunku") }
-                )
+                Column {
+                    OutlinedTextField(
+                        value = schoolName,
+                        onValueChange = { schoolName = it },
+                        label = { Text("Nazwa szkoły lub kierunku") }
+                    )
+                    OutlinedTextField(
+                        value = semesterName,
+                        onValueChange = { semesterName = it },
+                        label = { Text("Nazwa lub numer semestru") }
+                    )
+                    OutlinedTextField(
+                        value = subjectName,
+                        onValueChange = { subjectName = it },
+                        label = { Text("Nazwa Przedmiotu") }
+                    )
+                }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    showDialog = false
                     if (currentUser != null) {
-                        val schoolMap = hashMapOf("name" to schoolName)
-                        chmura.collection("users").document(currentUser.uid).collection("szkoly").document(schoolName)
-                            .set(schoolMap)
-                            .addOnSuccessListener {
-                                Log.d("Firestore", "DocumentSnapshot successfully written!")
-                            }
-                            .addOnFailureListener { e ->
-                                Log.w("Firestore", "Error writing document", e)
-                            }
+                        dodajDane(currentUser, schoolName,semesterName,subjectName, chmura)
                     } else {
                         Log.w("Firestore", "No user is currently signed in.")
                     }
+                    showDialog = false
                 }) {
                     Text("Potwierdź")
                 }
@@ -74,14 +82,13 @@ fun PrzedmiotyScreen(innerPadding: PaddingValues) {
             }
         )
     }
+
+
         LazyColumn(
             modifier = Modifier
-
                 .padding(innerPadding),
-
         ) {
             items(listaSzkola){school->
-//                Toast.makeText(mycontext,school.id,Toast.LENGTH_SHORT).show()
                 ExpandableSchoolItem(school)
             }
         }
@@ -99,6 +106,43 @@ fun PrzedmiotyScreen(innerPadding: PaddingValues) {
         }
 
 }
+//przepisałem do funkcji dodawanie danych do firebase dla czytelności
+
+private fun dodajDane(
+    currentUser: FirebaseUser,//sprawdzamy przy wywołaniu czy użytkownik jest zalogowany więc nie ma szans że nie będzie
+    schoolName: String,
+    semesterName: String,
+    subjectName: String,
+    chmura: FirebaseFirestore
+){
+
+        // w razie jakby było mięcej eleentów niż nazwa lepiej to przenieść do Onclick i do parametru podać tylko hashMap (tak mi się wydaje)
+        val schoolMap = hashMapOf("name" to schoolName)
+        val semesterMap = hashMapOf("name" to semesterName)
+        val subjectMap = hashMapOf("name" to subjectName)
+        val dodawanaSzkola = chmura.collection("users").document(currentUser.uid).collection("szkoly").document(schoolName)
+    chmura.runTransaction {transaction ->
+        //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
+            if (!transaction.get(dodawanaSzkola).exists()){
+                transaction.set(dodawanaSzkola,schoolMap)
+            }
+
+    }
+    val dodawanaSemestr = chmura.collection("users").document(currentUser.uid).collection("szkoly").document(schoolName).collection("semestry").document(semesterName)
+    chmura.runTransaction {transaction ->
+        //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
+        if (!transaction.get(dodawanaSemestr).exists()){
+            transaction.set(dodawanaSemestr,semesterMap)
+        }
+    }
+    val dodawanaSubject = chmura.collection("users").document(currentUser.uid).collection("szkoly").document(schoolName).collection("semestry").document(semesterName).collection("przedmioty").document(subjectName)
+    chmura.runTransaction {transaction ->
+        //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
+        if (!transaction.get(dodawanaSubject).exists()){
+            transaction.set(dodawanaSubject,subjectMap)
+        }
+    }
+}
 
 fun pobierzSzkoly(): Flow<List<Szkola>> = flow {
     val chmura = FirebaseFirestore.getInstance()
@@ -106,48 +150,63 @@ fun pobierzSzkoly(): Flow<List<Szkola>> = flow {
 
     if (currentUser != null) {
         try {
-            val snapshotSzkola = chmura.collection("users").document(currentUser.uid).collection("szkoly").get().await()
-            val listaSzkola = snapshotSzkola.documents.map { documentSzkola ->
-
-                Szkola(documentSzkola.id) // Zakładam, że konstruktor Szkola przyjmuje id jako argument
+            val listaSzkola = chmura.collection("users").document(currentUser.uid).collection("szkoly").get().await().documents.map { documentSzkola ->
+                Szkola(documentSzkola.id, listaSemestr = documentSzkola.reference.collection("semestry").get().await()
+                    .documents.map { documentSemestr ->
+                        Semestr(documentSemestr.id, listaSubject = documentSemestr.reference.collection("przedmioty").get().await()
+                            .documents.map { documentPrzedmiot ->
+                                Subbject(documentPrzedmiot.id)
+                            })
+                    })
             }
             emit(listaSzkola)
+
         } catch (e: Exception) {
-            // Obsługa błędów, na przykład emitowanie pustej listy lub błędu
             emit(emptyList<Szkola>())
         }
     } else {
-        // Użytkownik nie jest zalogowany, emitowanie pustej listy lub błędu
         emit(emptyList<Szkola>())
     }
 }
 @Composable
 fun ExpandableSchoolItem(school: Szkola) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-            .clickable { expanded = !expanded }
-    ) {
-        Column {
-            Text(
-                text = school.id,
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(8.dp)
-            )
-            AnimatedVisibility(visible = expanded) {
-                Text(
-                    text = "opsi",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(8.dp)
-                )
-                // Możesz dodać więcej szczegółów szkoły tutaj
+    for (semester in school.listaSemestr) {
+        for (subject in semester.listaSubject) {
+            var expanded by remember { mutableStateOf(false) }
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+                    .clickable { expanded = !expanded }
+            ) {
+                Column {
+                    Text(
+                        text = "Przedmiot: ${subject.id}",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                    AnimatedVisibility(visible = expanded) {
+                        Column {
+                            Text(
+                                text = "semestr: ${semester.id}",
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                            Text(
+                                text = "szkola: ${school.id}",
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
+
 }
+
+
 @Preview
 @Composable
 fun Preview() {

@@ -60,11 +60,6 @@ fun ProfileScreen() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Profile Screen",
-            fontSize = 40.sp,
-            color = Color.Black
-        )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = userEmail,

@@ -22,6 +22,9 @@ import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
+
 
 data class Szkola(var id: String,var listaSemestr:List<Semestr>)
 data class Semestr(var id:String,var listaSubject: List<Subbject>)
@@ -170,41 +173,67 @@ fun pobierzSzkoly(): Flow<List<Szkola>> = flow {
 }
 @Composable
 fun ExpandableSchoolItem(school: Szkola) {
-    for (semester in school.listaSemestr) {
-        for (subject in semester.listaSubject) {
-            var expanded by remember { mutableStateOf(false) }
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
-                    .clickable { expanded = !expanded }
-            ) {
-                Column {
-                    Text(
-                        text = "Przedmiot: ${subject.id}",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(8.dp)
-                    )
-                    AnimatedVisibility(visible = expanded) {
-                        Column {
-                            Text(
-                                text = "semestr: ${semester.id}",
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(8.dp)
-                            )
-                            Text(
-                                text = "szkola: ${school.id}",
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(8.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
+    var expanded by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+            .clickable { expanded = !expanded }
+    ) {
+        Text(
+            text = "Szkola: ${school.id}",
+            style = MaterialTheme.typography.h6,
+            modifier = Modifier.padding(8.dp)
+        )
     }
 
+    if (expanded) {
+        for (semester in school.listaSemestr) {
+            ExpandableSemesterItem(semester)
+        }
+    }
 }
+
+@Composable
+fun ExpandableSemesterItem(semester: Semestr) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
+            .clickable { expanded = !expanded }
+    ) {
+        Text(
+            text = "Semestr: ${semester.id}",
+            style = MaterialTheme.typography.h6,
+            modifier = Modifier.padding(8.dp)
+        )
+    }
+
+    if (expanded) {
+        for (subject in semester.listaSubject) {
+            ExpandableSubjectItem(subject)
+        }
+    }
+}
+
+@Composable
+fun ExpandableSubjectItem(subject: Subbject) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 32.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
+    ) {
+        Text(
+            text = "Przedmiot: ${subject.id}",
+            style = MaterialTheme.typography.h6,
+            modifier = Modifier.padding(8.dp)
+        )
+    }
+}
+
 
 
 @Preview

@@ -1,6 +1,5 @@
 package com.example.studysorter.screens
 
-import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -10,7 +9,8 @@ import androidx.compose.ui.graphics.Color
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.auth.FirebaseAuth
 import android.util.Log
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Box
@@ -22,8 +22,11 @@ import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.zIndex
 
 
 data class Szkola(var id: String,var listaSemestr:List<Semestr>)
@@ -40,7 +43,7 @@ fun PrzedmiotyScreen(innerPadding: PaddingValues) {
     var semesterName by remember { mutableStateOf("") }
     var subjectName by remember { mutableStateOf("") }
 
-    val listaSzkola: List<Szkola> by pobierzSzkoly().collectAsState(initial = emptyList())
+    val listaSzkola: List<Szkola> by downloadData().collectAsState(initial = emptyList())
 
 
     if (showDialog) {
@@ -48,17 +51,59 @@ fun PrzedmiotyScreen(innerPadding: PaddingValues) {
             onDismissRequest = { showDialog = false },
             title = { Text("Dodaj nazwę szkoły lub kierunku") },
             text = {
+                var focusSchool by remember { mutableStateOf(false)}
+                var focusSemester by remember { mutableStateOf(false)}
                 Column {
                     OutlinedTextField(
                         value = schoolName,
                         onValueChange = { schoolName = it },
-                        label = { Text("Nazwa szkoły lub kierunku") }
+                        label = { Text("Nazwa szkoły lub kierunku") },
+                        modifier = Modifier.onFocusChanged { focusSchool = it.isFocused }
                     )
+                    if (focusSchool){
+                        Box {
+                            LazyColumn(modifier = Modifier.padding(start = 10.dp)) {
+                                items(listaSzkola) { school ->
+                                    HorizontalDivider(color = Color.Gray)
+                                    Text(
+                                        text = school.id,
+                                        modifier = Modifier.clickable {schoolName = school.id}.padding(8.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     OutlinedTextField(
                         value = semesterName,
                         onValueChange = { semesterName = it },
-                        label = { Text("Nazwa lub numer semestru") }
+                        label = { Text("Nazwa lub numer semestru") },
+                        modifier = Modifier.onFocusChanged {
+                            focusSemester = it.isFocused
+                        }
                     )
+
+                    if (focusSemester){
+                        var listaSemTym = emptyList<Semestr>()
+
+                        for (school in listaSzkola){
+                            if (school.id == schoolName){
+                                listaSemTym = school.listaSemestr
+                                break
+                            }
+                        }
+                        Box {
+                            LazyColumn(modifier = Modifier.padding(start = 10.dp)) {
+                                items(listaSemTym) { semester ->
+                                    HorizontalDivider(color = Color.Gray)
+                                    Text(
+                                        text = semester.id,
+                                        modifier = Modifier.clickable {schoolName = semester.id}.padding(8.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
                     OutlinedTextField(
                         value = subjectName,
                         onValueChange = { subjectName = it },
@@ -69,7 +114,7 @@ fun PrzedmiotyScreen(innerPadding: PaddingValues) {
             confirmButton = {
                 TextButton(onClick = {
                     if (currentUser != null) {
-                        dodajDane(currentUser, schoolName,semesterName,subjectName, chmura)
+                        addData(currentUser, schoolName,semesterName,subjectName, chmura)
                     } else {
                         Log.w("Firestore", "No user is currently signed in.")
                     }
@@ -111,7 +156,7 @@ fun PrzedmiotyScreen(innerPadding: PaddingValues) {
 }
 //przepisałem do funkcji dodawanie danych do firebase dla czytelności
 
-private fun dodajDane(
+private fun addData(
     currentUser: FirebaseUser,//sprawdzamy przy wywołaniu czy użytkownik jest zalogowany więc nie ma szans że nie będzie
     schoolName: String,
     semesterName: String,
@@ -147,7 +192,7 @@ private fun dodajDane(
     }
 }
 
-fun pobierzSzkoly(): Flow<List<Szkola>> = flow {
+fun downloadData(): Flow<List<Szkola>> = flow {
     val chmura = FirebaseFirestore.getInstance()
     val currentUser = FirebaseAuth.getInstance().currentUser
 
@@ -165,27 +210,43 @@ fun pobierzSzkoly(): Flow<List<Szkola>> = flow {
             emit(listaSzkola)
 
         } catch (e: Exception) {
-            emit(emptyList<Szkola>())
+            emit(emptyList())
         }
     } else {
-        emit(emptyList<Szkola>())
+        emit(emptyList())
     }
 }
 @Composable
 fun ExpandableSchoolItem(school: Szkola) {
     var expanded by remember { mutableStateOf(false) }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .clickable { expanded = !expanded }
+            .clickable {
+                if (school.listaSemestr.isNotEmpty()) {
+                    expanded = !expanded
+                }
+            }
     ) {
-        Text(
-            text = "Szkola: ${school.id}",
-            style = MaterialTheme.typography.h6,
-            modifier = Modifier.padding(8.dp)
-        )
+        Row{
+            if (school.listaSemestr.isNotEmpty()){
+                Icon(
+                    imageVector =if (expanded) Icons.Filled.ArrowDropDown else Icons.Filled.ArrowDropUp,
+                    contentDescription =  if (expanded) "rozwinięte" else "zwnięte",
+                    modifier = Modifier.padding(top = 10.dp,start = 8.dp)
+                )
+            }else{
+                Box(modifier = Modifier
+                    .width(Icons.Filled.ArrowDropDown.defaultWidth + 8.dp)
+                    .padding(top = 10.dp, start = 10.dp))
+            }
+            Text(
+                "Szkoła: ${school.id}",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(8.dp),
+            )
+        }
     }
 
     if (expanded) {
@@ -198,18 +259,33 @@ fun ExpandableSchoolItem(school: Szkola) {
 @Composable
 fun ExpandableSemesterItem(semester: Semestr) {
     var expanded by remember { mutableStateOf(false) }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
-            .clickable { expanded = !expanded }
+            .clickable {
+                if (semester.listaSubject.isNotEmpty()) {
+                    expanded = !expanded
+                }
+            }
     ) {
-        Text(
-            text = "Semestr: ${semester.id}",
-            style = MaterialTheme.typography.h6,
-            modifier = Modifier.padding(8.dp)
-        )
+        Row{
+            if (semester.listaSubject.isNotEmpty()) {
+                Icon(
+                    imageVector = if (expanded) Icons.Filled.ArrowDropDown else Icons.Filled.ArrowDropUp,
+                    contentDescription =  if (expanded) "rozwinięte" else "zwnięte",
+                    modifier = Modifier.padding(top = 10.dp,start = 8.dp)
+                )
+            }else{
+                Box(modifier = Modifier.width(Icons.Filled.ArrowDropDown.defaultWidth+8.dp))
+            }
+            Text(
+                text = "Semestr: ${semester.id}",
+                style = MaterialTheme.typography.bodyLarge ,
+                //style = MaterialTheme.typography.h6,
+                modifier = Modifier.padding(8.dp)
+            )
+        }
     }
 
     if (expanded) {
@@ -226,25 +302,135 @@ fun ExpandableSubjectItem(subject: Subbject) {
             .fillMaxWidth()
             .padding(start = 32.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
     ) {
-        Text(
-            text = "Przedmiot: ${subject.id}",
-            style = MaterialTheme.typography.h6,
-            modifier = Modifier.padding(8.dp)
-        )
+        Row{
+            Text(
+                text = "Przedmiot: ${subject.id}",
+                style = MaterialTheme.typography.bodyMedium ,
+                //style = MaterialTheme.typography.h6,
+                modifier = Modifier.padding(8.dp)
+            )
+        }
     }
 }
 
 
 
+/* tu są funkcje dla testowania
+@Preview(showBackground = true)
+@Composable
+fun PreviewlistaSzkol() {
+
+    val listaP = listOf(
+        Subbject("przedmiot1),"),
+        Subbject("Bob"),
+        Subbject("Charlie")
+    )
+    val listaSe = listOf(
+        Semestr("sem1,", emptyList()),
+        Semestr("sem2", emptyList()),
+        Semestr("sem3",listaP)
+    )
+    val listaSZ = listOf(
+        Szkola("szkola",listaSe),
+        Szkola("technikum)", emptyList()),
+        Szkola("Charlie", emptyList())
+    )
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(1f),
+    ) {
+        items(listaSZ){school->
+            ExpandableSchoolItem(school)
+        }
+    }
+
+}
 @Preview
 @Composable
-fun Preview() {
-    var zalogowany by remember { mutableStateOf(false)}
-    FirebaseAuth.getInstance().signInWithEmailAndPassword("test@gmail.com", "123456")
-        .addOnSuccessListener {
-            zalogowany = true
-        }
-    if (zalogowany){
-        MainScreen()
+fun Previewdodawanie() {
+    val listaP = listOf(
+        Subbject("przedmiot1),"),
+        Subbject("Bob"),
+        Subbject("Charlie")
+    )
+    val listaSe = listOf(
+        Semestr("sem1,", emptyList()),
+        Semestr("sem2", emptyList()),
+        Semestr("sem3",listaP)
+    )
+    val listaSZ = listOf(
+        Szkola("szkola",listaSe),
+        Szkola("technikum)", emptyList()),
+        Szkola("Charlie", emptyList())
+    )
+    var showDialog by remember { mutableStateOf(true) }
+    var schoolName by remember { mutableStateOf("") }
+    var semesterName by remember { mutableStateOf("") }
+    var subjectName by remember { mutableStateOf("") }
+    if (showDialog){
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Dodaj nazwę szkoły lub kierunku") },
+            text = {
+
+                Column {
+
+                    var focusSchool by remember { mutableStateOf(false)}
+                    OutlinedTextField(
+                        value = schoolName,
+                        onValueChange = { schoolName = it },
+                        modifier = Modifier
+                            .onFocusChanged { focusSchool = it.isFocused },
+                        label = { Text("Nazwa szkoły lub kierunku") } ,
+                    )
+                    if (focusSchool){
+                        Box {
+                            LazyColumn(modifier = Modifier.padding(start = 10.dp)) {
+                                items(listaSZ) { school ->
+                                    HorizontalDivider(color = Color.Gray)
+                                    Text(
+                                        text = school.id,
+                                        modifier = Modifier.clickable {schoolName = school.id}.padding(8.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    OutlinedTextField(
+                        value = semesterName,
+                        onValueChange = { semesterName = it },
+                        label = { Text("Nazwa lub numer semestru") }
+                    )
+
+                    OutlinedTextField(
+                        value = subjectName,
+                        onValueChange = { subjectName = it },
+                        label = { Text("Nazwa Przedmiotu") }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+
+                    showDialog = false
+                }) {
+                    Text("Potwierdź")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Anuluj")
+                }
+            }
+        )
     }
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Green)) {
+            Text(text = "szkola $schoolName",style = MaterialTheme.typography.headlineSmall)
+            Text(text = "semestr $semesterName",style = MaterialTheme.typography.headlineSmall)
+            Text(text = "przedmiot $subjectName",style = MaterialTheme.typography.headlineSmall)
+            Button(onClick = { showDialog = !showDialog}) {
+                Text(text = "pokaz")
+            }
+        }
 }

@@ -14,7 +14,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.ExposedDropdownMenuDefaults.outlinedTextFieldColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -242,7 +241,7 @@ private fun zarejestru() {
                     isHasloPowtCorrect.value = false
                     Toast.makeText(mycontext, "hasła niezgadzają się ", Toast.LENGTH_SHORT).show()
                 }
-                if (haslo.length < 7 && isHasloCorrect.value ){
+                if (haslo.length < 6 && isHasloCorrect.value ){
                     isHasloCorrect.value = false
                     isHasloPowtCorrect.value = false
                     Toast.makeText(mycontext, "hasło jest za krótkie powinno mieć co najmniej 6 znaków ", Toast.LENGTH_SHORT).show()

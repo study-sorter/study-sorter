@@ -27,13 +27,15 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.zIndex
+import androidx.navigation.NavController
+import com.example.studysorter.navigation.Screens
 
 
 data class Szkola(var id: String,var listaSemestr:List<Semestr>)
 data class Semestr(var id:String,var listaSubject: List<Subbject>)
 data class Subbject(var id:String) //jest Subbject bo koliduje z jakąś gotow klasą
 @Composable
-fun PrzedmiotyScreen(innerPadding: PaddingValues) {
+fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) {
     val mycontext = LocalContext.current
 
     val chmura = FirebaseFirestore.getInstance()
@@ -67,7 +69,9 @@ fun PrzedmiotyScreen(innerPadding: PaddingValues) {
                                     HorizontalDivider(color = Color.Gray)
                                     Text(
                                         text = school.id,
-                                        modifier = Modifier.clickable {schoolName = school.id}.padding(8.dp)
+                                        modifier = Modifier
+                                            .clickable { schoolName = school.id }
+                                            .padding(8.dp)
                                     )
                                 }
                             }
@@ -98,7 +102,9 @@ fun PrzedmiotyScreen(innerPadding: PaddingValues) {
                                     HorizontalDivider(color = Color.Gray)
                                     Text(
                                         text = semester.id,
-                                        modifier = Modifier.clickable {schoolName = semester.id}.padding(8.dp)
+                                        modifier = Modifier
+                                            .clickable { schoolName = semester.id }
+                                            .padding(8.dp)
                                     )
                                 }
                             }
@@ -137,7 +143,7 @@ fun PrzedmiotyScreen(innerPadding: PaddingValues) {
                 .padding(innerPadding),
         ) {
             items(listaSzkola){school->
-                ExpandableSchoolItem(school)
+                ExpandableSchoolItem(school, navController)
             }
         }
 
@@ -217,7 +223,7 @@ fun downloadData(): Flow<List<Szkola>> = flow {
     }
 }
 @Composable
-fun ExpandableSchoolItem(school: Szkola) {
+fun ExpandableSchoolItem(school: Szkola, navController: NavController) {
     var expanded by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier
@@ -251,14 +257,15 @@ fun ExpandableSchoolItem(school: Szkola) {
 
     if (expanded) {
         for (semester in school.listaSemestr) {
-            ExpandableSemesterItem(semester)
+            ExpandableSemesterItem(semester, navController)
         }
     }
 }
 
 @Composable
-fun ExpandableSemesterItem(semester: Semestr) {
+fun ExpandableSemesterItem(semester: Semestr, navController: NavController) {
     var expanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -269,20 +276,19 @@ fun ExpandableSemesterItem(semester: Semestr) {
                 }
             }
     ) {
-        Row{
+        Row {
             if (semester.listaSubject.isNotEmpty()) {
                 Icon(
                     imageVector = if (expanded) Icons.Filled.ArrowDropDown else Icons.Filled.ArrowDropUp,
-                    contentDescription =  if (expanded) "rozwinięte" else "zwnięte",
-                    modifier = Modifier.padding(top = 10.dp,start = 8.dp)
+                    contentDescription = if (expanded) "rozwinięte" else "zwnięte",
+                    modifier = Modifier.padding(top = 10.dp, start = 8.dp)
                 )
-            }else{
-                Box(modifier = Modifier.width(Icons.Filled.ArrowDropDown.defaultWidth+8.dp))
+            } else {
+                Box(modifier = Modifier.width(Icons.Filled.ArrowDropDown.defaultWidth + 8.dp))
             }
             Text(
                 text = "Semestr: ${semester.id}",
-                style = MaterialTheme.typography.bodyLarge ,
-                //style = MaterialTheme.typography.h6,
+                style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(8.dp)
             )
         }
@@ -290,23 +296,26 @@ fun ExpandableSemesterItem(semester: Semestr) {
 
     if (expanded) {
         for (subject in semester.listaSubject) {
-            ExpandableSubjectItem(subject)
+            ExpandableSubjectItem(subject, navController)
         }
     }
 }
 
 @Composable
-fun ExpandableSubjectItem(subject: Subbject) {
+fun ExpandableSubjectItem(subject: Subbject, navController: NavController) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable {
+                // Navigate to detail screen on subject click
+                navController.navigate("${Screens.Przedmioty.route}/${subject.id}")
+            }
             .padding(start = 32.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
     ) {
-        Row{
+        Row {
             Text(
                 text = "Przedmiot: ${subject.id}",
-                style = MaterialTheme.typography.bodyMedium ,
-                //style = MaterialTheme.typography.h6,
+                style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(8.dp)
             )
         }

@@ -1,0 +1,268 @@
+Subject: [PATCH] dodanie przejścia do przedmiotu
+---
+Index: .idea/deploymentTargetDropDown.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/deploymentTargetDropDown.xml b/.idea/deploymentTargetDropDown.xml
+--- a/.idea/deploymentTargetDropDown.xml	(revision 836f040c1d2f5bd11f47f05ce1711711a6c8557f)
++++ b/.idea/deploymentTargetDropDown.xml	(revision 372317601815778e9de8ab8fd49438b2bebbb82e)
+@@ -2,16 +2,7 @@
+ <project version="4">
+   <component name="deploymentTargetDropDown">
+     <value>
+-      <entry key="Preview">
+-        <State />
+-      </entry>
+-      <entry key="PrzedmiotyScreenPreview">
+-        <State />
+-      </entry>
+       <entry key="app">
+-        <State />
+-      </entry>
+-      <entry key="zarejestru">
+         <State />
+       </entry>
+     </value>
+Index: .idea/misc.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/misc.xml b/.idea/misc.xml
+--- a/.idea/misc.xml	(revision 836f040c1d2f5bd11f47f05ce1711711a6c8557f)
++++ b/.idea/misc.xml	(revision 372317601815778e9de8ab8fd49438b2bebbb82e)
+@@ -1,5 +1,5 @@
++<?xml version="1.0" encoding="UTF-8"?>
+ <project version="4">
+-  <component name="ExternalStorageConfigurationManager" enabled="true" />
+   <component name="ProjectRootManager" version="2" languageLevel="JDK_17" default="true" project-jdk-name="jbr-17" project-jdk-type="JavaSDK">
+     <output url="file://$PROJECT_DIR$/build/classes" />
+   </component>
+Index: app/src/main/java/com/example/studysorter/navigation/NavGraph.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/studysorter/navigation/NavGraph.kt b/app/src/main/java/com/example/studysorter/navigation/NavGraph.kt
+--- a/app/src/main/java/com/example/studysorter/navigation/NavGraph.kt	(revision 836f040c1d2f5bd11f47f05ce1711711a6c8557f)
++++ b/app/src/main/java/com/example/studysorter/navigation/NavGraph.kt	(revision 372317601815778e9de8ab8fd49438b2bebbb82e)
+@@ -3,8 +3,11 @@
+ import androidx.compose.foundation.layout.PaddingValues
+ import androidx.compose.runtime.Composable
+ import androidx.navigation.NavHostController
++import androidx.navigation.NavType
+ import androidx.navigation.compose.NavHost
+ import androidx.navigation.compose.composable
++import androidx.navigation.navArgument
++import com.example.studysorter.screens.DetailScreen
+ import com.example.studysorter.screens.HomeScreen
+ import com.example.studysorter.screens.ProfileScreen
+ import com.example.studysorter.screens.PrzedmiotyScreen
+@@ -25,10 +28,18 @@
+             ProfileScreen()
+         }
+         composable(Screens.Przedmioty.route){
+-            PrzedmiotyScreen(innerPadding = innerPadding)
++            PrzedmiotyScreen(innerPadding = innerPadding, navController = navController)
+         }
+         composable(Screens.Ulubione.route){
+             UlubioneScreen(innerPadding = innerPadding)
+         }
++        composable(
++            route = "${Screens.Przedmioty.route}/{subjectId}",
++            arguments = listOf(navArgument("subjectId") { type = NavType.StringType })
++        ) { backStackEntry ->
++            val subjectId = backStackEntry.arguments?.getString("subjectId")
++            DetailScreen(subjectId)
++        }
++
+     }
+ }
+\ No newline at end of file
+Index: app/src/main/java/com/example/studysorter/screens/DetailScreen.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/studysorter/screens/DetailScreen.kt b/app/src/main/java/com/example/studysorter/screens/DetailScreen.kt
+new file mode 100644
+--- /dev/null	(revision 372317601815778e9de8ab8fd49438b2bebbb82e)
++++ b/app/src/main/java/com/example/studysorter/screens/DetailScreen.kt	(revision 372317601815778e9de8ab8fd49438b2bebbb82e)
+@@ -0,0 +1,33 @@
++package com.example.studysorter.screens
++import androidx.compose.foundation.layout.*
++import androidx.compose.material3.Text
++import androidx.compose.runtime.Composable
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.graphics.Color
++import androidx.compose.ui.tooling.preview.Preview
++import androidx.compose.ui.unit.dp
++
++@Composable
++fun DetailScreen(subjectId: String?) {
++    Column(
++        modifier = Modifier
++            .fillMaxSize()
++            .padding(16.dp),
++        verticalArrangement = Arrangement.Center,
++        horizontalAlignment = Alignment.CenterHorizontally
++    ) {
++        if (subjectId != null) {
++            Text(text = "Subject Details for ID: $subjectId", color = Color.Black)
++        } else {
++            Text(text = "Invalid Subject ID", color = Color.Red)
++        }
++    }
++}
++
++@Preview
++@Composable
++fun PreviewDetailScreen() {
++    DetailScreen("Math")
++}
++
+Index: app/src/main/java/com/example/studysorter/screens/PrzedmiotyScreen.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/example/studysorter/screens/PrzedmiotyScreen.kt b/app/src/main/java/com/example/studysorter/screens/PrzedmiotyScreen.kt
+--- a/app/src/main/java/com/example/studysorter/screens/PrzedmiotyScreen.kt	(revision 836f040c1d2f5bd11f47f05ce1711711a6c8557f)
++++ b/app/src/main/java/com/example/studysorter/screens/PrzedmiotyScreen.kt	(revision 372317601815778e9de8ab8fd49438b2bebbb82e)
+@@ -27,13 +27,15 @@
+ import androidx.compose.ui.focus.focusRequester
+ import androidx.compose.ui.focus.onFocusChanged
+ import androidx.compose.ui.zIndex
++import androidx.navigation.NavController
++import com.example.studysorter.navigation.Screens
+ 
+ 
+ data class Szkola(var id: String,var listaSemestr:List<Semestr>)
+ data class Semestr(var id:String,var listaSubject: List<Subbject>)
+ data class Subbject(var id:String) //jest Subbject bo koliduje z jakąś gotow klasą
+ @Composable
+-fun PrzedmiotyScreen(innerPadding: PaddingValues) {
++fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) {
+     val mycontext = LocalContext.current
+ 
+     val chmura = FirebaseFirestore.getInstance()
+@@ -67,7 +69,9 @@
+                                     HorizontalDivider(color = Color.Gray)
+                                     Text(
+                                         text = school.id,
+-                                        modifier = Modifier.clickable {schoolName = school.id}.padding(8.dp)
++                                        modifier = Modifier
++                                            .clickable { schoolName = school.id }
++                                            .padding(8.dp)
+                                     )
+                                 }
+                             }
+@@ -98,7 +102,9 @@
+                                     HorizontalDivider(color = Color.Gray)
+                                     Text(
+                                         text = semester.id,
+-                                        modifier = Modifier.clickable {schoolName = semester.id}.padding(8.dp)
++                                        modifier = Modifier
++                                            .clickable { schoolName = semester.id }
++                                            .padding(8.dp)
+                                     )
+                                 }
+                             }
+@@ -137,7 +143,7 @@
+                 .padding(innerPadding),
+         ) {
+             items(listaSzkola){school->
+-                ExpandableSchoolItem(school)
++                ExpandableSchoolItem(school, navController)
+             }
+         }
+ 
+@@ -217,7 +223,7 @@
+     }
+ }
+ @Composable
+-fun ExpandableSchoolItem(school: Szkola) {
++fun ExpandableSchoolItem(school: Szkola, navController: NavController) {
+     var expanded by remember { mutableStateOf(false) }
+     Card(
+         modifier = Modifier
+@@ -251,14 +257,15 @@
+ 
+     if (expanded) {
+         for (semester in school.listaSemestr) {
+-            ExpandableSemesterItem(semester)
++            ExpandableSemesterItem(semester, navController)
+         }
+     }
+ }
+ 
+ @Composable
+-fun ExpandableSemesterItem(semester: Semestr) {
++fun ExpandableSemesterItem(semester: Semestr, navController: NavController) {
+     var expanded by remember { mutableStateOf(false) }
++
+     Card(
+         modifier = Modifier
+             .fillMaxWidth()
+@@ -269,20 +276,19 @@
+                 }
+             }
+     ) {
+-        Row{
++        Row {
+             if (semester.listaSubject.isNotEmpty()) {
+                 Icon(
+                     imageVector = if (expanded) Icons.Filled.ArrowDropDown else Icons.Filled.ArrowDropUp,
+-                    contentDescription =  if (expanded) "rozwinięte" else "zwnięte",
+-                    modifier = Modifier.padding(top = 10.dp,start = 8.dp)
++                    contentDescription = if (expanded) "rozwinięte" else "zwnięte",
++                    modifier = Modifier.padding(top = 10.dp, start = 8.dp)
+                 )
+-            }else{
+-                Box(modifier = Modifier.width(Icons.Filled.ArrowDropDown.defaultWidth+8.dp))
++            } else {
++                Box(modifier = Modifier.width(Icons.Filled.ArrowDropDown.defaultWidth + 8.dp))
+             }
+             Text(
+                 text = "Semestr: ${semester.id}",
+-                style = MaterialTheme.typography.bodyLarge ,
+-                //style = MaterialTheme.typography.h6,
++                style = MaterialTheme.typography.bodyLarge,
+                 modifier = Modifier.padding(8.dp)
+             )
+         }
+@@ -290,23 +296,26 @@
+ 
+     if (expanded) {
+         for (subject in semester.listaSubject) {
+-            ExpandableSubjectItem(subject)
++            ExpandableSubjectItem(subject, navController)
+         }
+     }
+ }
+ 
+ @Composable
+-fun ExpandableSubjectItem(subject: Subbject) {
++fun ExpandableSubjectItem(subject: Subbject, navController: NavController) {
+     Card(
+         modifier = Modifier
+             .fillMaxWidth()
++            .clickable {
++                // Navigate to detail screen on subject click
++                navController.navigate("${Screens.Przedmioty.route}/${subject.id}")
++            }
+             .padding(start = 32.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
+     ) {
+-        Row{
++        Row {
+             Text(
+                 text = "Przedmiot: ${subject.id}",
+-                style = MaterialTheme.typography.bodyMedium ,
+-                //style = MaterialTheme.typography.h6,
++                style = MaterialTheme.typography.bodyMedium,
+                 modifier = Modifier.padding(8.dp)
+             )
+         }

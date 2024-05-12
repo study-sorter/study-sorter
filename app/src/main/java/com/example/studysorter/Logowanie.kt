@@ -52,7 +52,6 @@ class Logowanie : AppCompatActivity() {
         //setContentView(R.layout.activity_logowanie)
 
         setContent{
-            StudySorterTheme {
                 Surface(
                     color = colorResource(id = R.color.tlo_aplikacja),
                     modifier = Modifier.fillMaxSize()
@@ -60,7 +59,6 @@ class Logowanie : AppCompatActivity() {
                         Zaloguj()
                 }
 
-            }
         }
 // tymczasowe można usunąć komentarze yyy nie wiem czy to zadziała na razie nie ruszać XD
 //        FirebaseAuth.getInstance().currentUser?.let { auth -> //jeśli null to się nie wykona

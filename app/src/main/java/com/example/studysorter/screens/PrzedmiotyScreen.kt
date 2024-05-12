@@ -2,6 +2,7 @@ package com.example.studysorter.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -9,9 +10,11 @@ import androidx.compose.ui.graphics.Color
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.auth.FirebaseAuth
 import android.util.Log
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,16 +27,17 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.navigation.NavController
+import com.bumptech.glide.request.RequestOptions.option
 import com.example.studysorter.navigation.Screens
 
 
 data class Szkola(var id: String,var listaSemestr:List<Semestr>)
-data class Semestr(var id:String,var listaSubject: List<Subbject>)
-data class Subbject(var id:String) //jest Subbject bo koliduje z jakąś gotow klasą
+data class Semestr(var id:String,var listaSubject: List<Subbject>,var parentId:String)
+data class Subbject(var id:String, var parentId:String) //jest Subbject bo koliduje z jakąś gotow klasą
 @Composable
 fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) {
     val mycontext = LocalContext.current
@@ -72,6 +76,7 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
                                         modifier = Modifier
                                             .clickable { schoolName = school.id }
                                             .padding(8.dp)
+                                            .fillMaxWidth()
                                     )
                                 }
                             }
@@ -103,8 +108,9 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
                                     Text(
                                         text = semester.id,
                                         modifier = Modifier
-                                            .clickable { schoolName = semester.id }
+                                            .clickable { semesterName = semester.id }
                                             .padding(8.dp)
+                                            .fillMaxWidth()
                                     )
                                 }
                             }
@@ -139,6 +145,7 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
 
 
         LazyColumn(
+//            contentPadding = 9.dp,
             modifier = Modifier
                 .padding(innerPadding),
         ) {
@@ -207,9 +214,9 @@ fun downloadData(): Flow<List<Szkola>> = flow {
             val listaSzkola = chmura.collection("users").document(currentUser.uid).collection("szkoly").get().await().documents.map { documentSzkola ->
                 Szkola(documentSzkola.id, listaSemestr = documentSzkola.reference.collection("semestry").get().await()
                     .documents.map { documentSemestr ->
-                        Semestr(documentSemestr.id, listaSubject = documentSemestr.reference.collection("przedmioty").get().await()
+                        Semestr(documentSemestr.id, parentId = documentSzkola.id, listaSubject = documentSemestr.reference.collection("przedmioty").get().await()
                             .documents.map { documentPrzedmiot ->
-                                Subbject(documentPrzedmiot.id)
+                                Subbject(documentPrzedmiot.id,documentSemestr.id)
                             })
                     })
             }
@@ -222,18 +229,26 @@ fun downloadData(): Flow<List<Szkola>> = flow {
         emit(emptyList())
     }
 }
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ExpandableSchoolItem(school: Szkola, navController: NavController) {
     var expanded by remember { mutableStateOf(false) }
+    var more_options by remember { mutableStateOf(false)}
+    var path = mutableListOf(school.id)
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .clickable {
-                if (school.listaSemestr.isNotEmpty()) {
-                    expanded = !expanded
+            .combinedClickable(
+                onLongClick = {
+                    more_options = true
+                },
+                onClick = {
+                    if (school.listaSemestr.isNotEmpty()) {
+                        expanded = !expanded
+                    }
                 }
-            }
+            )
     ) {
         Row{
             if (school.listaSemestr.isNotEmpty()){
@@ -257,24 +272,34 @@ fun ExpandableSchoolItem(school: Szkola, navController: NavController) {
 
     if (expanded) {
         for (semester in school.listaSemestr) {
-            ExpandableSemesterItem(semester, navController)
+            ExpandableSemesterItem(semester, navController,path)
         }
+    }
+    if (more_options){
+        more_options = options(path)
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ExpandableSemesterItem(semester: Semestr, navController: NavController) {
+fun ExpandableSemesterItem(semester: Semestr, navController: NavController, path: MutableList<String>) {
     var expanded by remember { mutableStateOf(false) }
-
+    var more_options by remember { mutableStateOf(false)}
+    var pathSem = mutableListOf(path[0],semester.id)
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
-            .clickable {
-                if (semester.listaSubject.isNotEmpty()) {
-                    expanded = !expanded
+            .combinedClickable(
+                onLongClick = {
+                    more_options = true
+                },
+                onClick ={
+                    if (semester.listaSubject.isNotEmpty()) {
+                        expanded = !expanded
+                    }
                 }
-            }
+            )
     ) {
         Row {
             if (semester.listaSubject.isNotEmpty()) {
@@ -296,21 +321,33 @@ fun ExpandableSemesterItem(semester: Semestr, navController: NavController) {
 
     if (expanded) {
         for (subject in semester.listaSubject) {
-            ExpandableSubjectItem(subject, navController)
+            ExpandableSubjectItem(subject, navController,pathSem)
         }
+    }
+    if (more_options){
+        more_options = options(pathSem)
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ExpandableSubjectItem(subject: Subbject, navController: NavController) {
+fun ExpandableSubjectItem(subject: Subbject, navController: NavController,pathSem: MutableList<String>) {
+    var more_options by remember { mutableStateOf(false)}
+    var pathSub = mutableListOf(pathSem[0],pathSem[1],subject.id)
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
+            .padding(start = 32.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
+            .combinedClickable(
+            onLongClick = {
+                more_options = true
+            },
+            onClick ={
                 // Navigate to detail screen on subject click
                 navController.navigate("${Screens.Przedmioty.route}/${subject.id}")
             }
-            .padding(start = 32.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
+        )
+
     ) {
         Row {
             Text(
@@ -320,9 +357,94 @@ fun ExpandableSubjectItem(subject: Subbject, navController: NavController) {
             )
         }
     }
+    if (more_options){
+        more_options = options(pathSub)
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun options(path:MutableList<String>): Boolean {
+    val mycontext = LocalContext.current
+    val userDoc = FirebaseFirestore.getInstance().collection("userus").document(FirebaseAuth.getInstance().currentUser!!.uid)
+    var showBottomSheet by remember { mutableStateOf(true)}
+    ModalBottomSheet(onDismissRequest = {
+        showBottomSheet  = false
+    },
+        sheetState = rememberModalBottomSheetState(true)
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(start = 20.dp,bottom = 50.dp)
+        ) {
+            Option(Icons.Default.Edit, "Edytuj") {
+                when(path.size){
+                   /* 1 -> {
+                        Toast.makeText(mycontext,path[0] , Toast.LENGTH_SHORT).show()
+                    }
+                    2 ->{
+                        Toast.makeText(mycontext,path[0] , Toast.LENGTH_SHORT).show()
+                        Toast.makeText(mycontext,path[1] , Toast.LENGTH_SHORT).show()
+                    }
+                    3 ->{
+                        Toast.makeText(mycontext,path[0] , Toast.LENGTH_SHORT).show()
+                        Toast.makeText(mycontext,path[1] , Toast.LENGTH_SHORT).show()
+                        Toast.makeText(mycontext,path[2] , Toast.LENGTH_SHORT).show()
+                    }*/
+                }
+
+            }
+            Option(Icons.Default.FavoriteBorder, "Dodaj do Ulubionych") {
+
+            }
+            Option(icon = Icons.Default.Delete, text ="Usuń" ){
+
+                when(path.size){
+                    1 -> {
+                        val docRef = userDoc.collection("szkoly").document(path[0])
+                        docRef.collection("semestry").get().addOnSuccessListener {SemSnapshot ->
+
+                            for (sem in SemSnapshot.documents){
+                                sem.reference.collection("przedmioty").get().addOnSuccessListener {SubSnapshot ->
+                                    for (subject in SubSnapshot.documents){
+                                        subject.reference.delete().addOnFailureListener{
+                                            Toast.makeText(mycontext,"${subject.id} przedmiot nie udalo sie usunac",Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                                sem.reference.delete().addOnFailureListener{
+                                    Toast.makeText(mycontext,"${sem.id} semsetr nie udalo sie usunac",Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                        docRef.delete().addOnFailureListener{
+                            Toast.makeText(mycontext,"${docRef.id} szkola nie udalo sie usunac",Toast.LENGTH_SHORT).show()
+
+                        }
+                    }
+
+                }
+            }
+        }
+
+    }
+
+    return showBottomSheet
 }
 
-
+@Composable
+private fun Option(icon: ImageVector, text: String, function: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { function() }
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(space = 10.dp),
+    ) {
+        Icon(imageVector = icon, contentDescription = text)
+        Text(text)
+    }
+}
 
 /* tu są funkcje dla testowania
 @Preview(showBackground = true)

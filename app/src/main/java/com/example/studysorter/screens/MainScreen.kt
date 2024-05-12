@@ -15,6 +15,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.studysorter.navigation.BottomNavigationBar
 import com.example.studysorter.navigation.NavigationItem
+import com.example.studysorter.navigation.Screens
 import com.example.studysorter.navigation.SetUpNavGraph
 
 
@@ -82,6 +83,7 @@ private fun deriveTopBarTitle(currentRoute: String): String {
         "profile" -> "Profile"
         "przedmioty" -> "Przedmioty"
         "ulubione" -> "Ulubione"
+        "${Screens.Przedmioty.route}/{subjectId}" -> "Przedmiot"
         else -> "Unknown"
     }
 }

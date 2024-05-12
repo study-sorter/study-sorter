@@ -30,8 +30,8 @@ fun HomeScreen(innerPadding: PaddingValues) {
     val openDialog = remember { mutableStateOf(false) }
     val eventName = remember { mutableStateOf("") }
     val eventHour = remember { mutableStateOf("") }
-    val currentUser = FirebaseAuth.getInstance().currentUser?.uid // Fetch the current user's ID
-    val firestoreInstance = FirebaseFirestore.getInstance() // Get Firestore instance
+    val currentUser = FirebaseAuth.getInstance().currentUser?.uid
+    val firestoreInstance = FirebaseFirestore.getInstance()
 
     // Fetch events from Firestore when the HomeScreen is loaded
     LaunchedEffect(key1 = true) {

@@ -360,6 +360,8 @@ fun ExpandableSubjectItem(subject: Subbject, navController: NavController,pathSe
     if (more_options){
         more_options = options(pathSub)
     }
+
+
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

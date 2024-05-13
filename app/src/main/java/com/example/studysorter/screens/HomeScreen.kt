@@ -23,6 +23,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.util.*
 import androidx.compose.runtime.LaunchedEffect
+import java.text.SimpleDateFormat
 
 @Composable
 fun HomeScreen(innerPadding: PaddingValues) {
@@ -32,16 +33,19 @@ fun HomeScreen(innerPadding: PaddingValues) {
     val eventHour = remember { mutableStateOf("") }
     val currentUser = FirebaseAuth.getInstance().currentUser?.uid
     val firestoreInstance = FirebaseFirestore.getInstance()
+    val events = remember { mutableStateOf(listOf<Map<String, Any>>()) }
+    val showEvents = remember { mutableStateOf(false) }
 
     // Fetch events from Firestore when the HomeScreen is loaded
     LaunchedEffect(key1 = true) {
         firestoreInstance.collection("users").document(currentUser!!).collection("events")
             .get()
             .addOnSuccessListener { documents ->
+                val fetchedEvents = mutableListOf<Map<String, Any>>()
                 for (document in documents) {
-                    println("${document.id} => ${document.data}")
-                    // Replace the print statement with your own logic to display the events on the calendar
+                    fetchedEvents.add(document.data)
                 }
+                events.value = fetchedEvents
             }
             .addOnFailureListener { exception ->
                 println("Error getting documents: $exception")
@@ -65,7 +69,15 @@ fun HomeScreen(innerPadding: PaddingValues) {
         })
 
         Button(onClick = { openDialog.value = true }) {
-            Text("Add Event")
+            Text("Dodaj wydarzenie")
+        }
+
+        Button(onClick = { showEvents.value = !showEvents.value }) {
+            Text("Pokaz wydarzenia")
+        }
+
+        if (showEvents.value) {
+            DisplayEvents(events = events.value)
         }
 
         if (openDialog.value) {
@@ -116,5 +128,16 @@ fun HomeScreen(innerPadding: PaddingValues) {
     }
 }
 
+@Composable
+fun DisplayEvents(events: List<Map<String, Any>>) {
+    Column {
+        for (event in events) {
+            val timestamp = event["date"] as com.google.firebase.Timestamp
+            val date = timestamp.toDate()
+            val formatter = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+            val dateString = formatter.format(date)
 
-
+            Text("Nazwa: ${event["name"]}, Data: $dateString, Godzina: ${event["hour"]}")
+        }
+    }
+}

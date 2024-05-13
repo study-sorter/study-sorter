@@ -63,7 +63,7 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = { pickFileLauncher.launch("image/*") }) {
+        Button(onClick = { pickFileLauncher.launch("*/*") }) {
             Text(text = "Upload File")
         }
 

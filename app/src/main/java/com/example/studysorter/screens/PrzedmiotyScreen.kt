@@ -14,13 +14,11 @@ import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -29,9 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.navigation.NavController
-import com.bumptech.glide.request.RequestOptions.option
 import com.example.studysorter.navigation.Screens
 
 
@@ -50,6 +46,7 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
     var subjectName by remember { mutableStateOf("") }
 
     val listaSzkola: List<Szkola> by downloadData().collectAsState(initial = emptyList())
+
 
 
     if (showDialog) {
@@ -176,31 +173,37 @@ private fun addData(
     subjectName: String,
     chmura: FirebaseFirestore
 ){
-
-        // w razie jakby było mięcej eleentów niż nazwa lepiej to przenieść do Onclick i do parametru podać tylko hashMap (tak mi się wydaje)
-        val schoolMap = hashMapOf("name" to schoolName)
-        val semesterMap = hashMapOf("name" to semesterName)
-        val subjectMap = hashMapOf("name" to subjectName)
+    Log.d("test","addDatafunkcja")
+    // w razie jakby było mięcej eleentów niż nazwa lepiej to przenieść do Onclick i do parametru podać tylko hashMap (tak mi się wydaje)
+    val schoolMap = hashMapOf("name" to schoolName)
+    val semesterMap = hashMapOf("name" to semesterName)
+    val subjectMap = hashMapOf("name" to subjectName)
+    if (schoolName.isNotEmpty()){
         val dodawanaSzkola = chmura.collection("users").document(currentUser.uid).collection("szkoly").document(schoolName)
-    chmura.runTransaction {transaction ->
-        //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
+        chmura.runTransaction {transaction ->
+            Log.d("test","runTransaction 1")
+            //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
             if (!transaction.get(dodawanaSzkola).exists()){
                 transaction.set(dodawanaSzkola,schoolMap)
             }
-
-    }
-    val dodawanaSemestr = chmura.collection("users").document(currentUser.uid).collection("szkoly").document(schoolName).collection("semestry").document(semesterName)
-    chmura.runTransaction {transaction ->
-        //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
-        if (!transaction.get(dodawanaSemestr).exists()){
-            transaction.set(dodawanaSemestr,semesterMap)
         }
-    }
-    val dodawanaSubject = chmura.collection("users").document(currentUser.uid).collection("szkoly").document(schoolName).collection("semestry").document(semesterName).collection("przedmioty").document(subjectName)
-    chmura.runTransaction {transaction ->
-        //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
-        if (!transaction.get(dodawanaSubject).exists()){
-            transaction.set(dodawanaSubject,subjectMap)
+        if(semesterName.isNotEmpty()){
+            val dodawanaSemestr = chmura.collection("users").document(currentUser.uid).collection("szkoly").document(schoolName).collection("semestry").document(semesterName)
+            chmura.runTransaction {transaction ->
+                //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
+                if (!transaction.get(dodawanaSemestr).exists()){
+                    transaction.set(dodawanaSemestr,semesterMap)
+                }
+            }
+            if (subjectName.isNotEmpty()){
+                val dodawanaSubject = chmura.collection("users").document(currentUser.uid).collection("szkoly").document(schoolName).collection("semestry").document(semesterName).collection("przedmioty").document(subjectName)
+                chmura.runTransaction {transaction ->
+                    //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
+                    if (!transaction.get(dodawanaSubject).exists()){
+                        transaction.set(dodawanaSubject,subjectMap)
+                    }
+                }
+            }
         }
     }
 }
@@ -208,7 +211,6 @@ private fun addData(
 fun downloadData(): Flow<List<Szkola>> = flow {
     val chmura = FirebaseFirestore.getInstance()
     val currentUser = FirebaseAuth.getInstance().currentUser
-
     if (currentUser != null) {
         try {
             val listaSzkola = chmura.collection("users").document(currentUser.uid).collection("szkoly").get().await().documents.map { documentSzkola ->
@@ -276,7 +278,7 @@ fun ExpandableSchoolItem(school: Szkola, navController: NavController) {
         }
     }
     if (more_options){
-        more_options = options(path)
+        more_options = options(path,navController)
     }
 }
 
@@ -325,7 +327,7 @@ fun ExpandableSemesterItem(semester: Semestr, navController: NavController, path
         }
     }
     if (more_options){
-        more_options = options(pathSem)
+        more_options = options(pathSem,navController)
     }
 }
 
@@ -339,13 +341,13 @@ fun ExpandableSubjectItem(subject: Subbject, navController: NavController,pathSe
             .fillMaxWidth()
             .padding(start = 32.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
             .combinedClickable(
-            onLongClick = {
-                more_options = true
-            },
-            onClick ={
-                // Navigate to detail screen on subject click
-                navController.navigate("${Screens.Przedmioty.route}/${subject.id}")
-            }
+        onLongClick = {
+            more_options = true
+        },
+        onClick ={
+            // Navigate to detail screen on subject click
+            navController.navigate("${Screens.Przedmioty.route}/${subject.id}")
+        }
         )
 
     ) {
@@ -358,16 +360,17 @@ fun ExpandableSubjectItem(subject: Subbject, navController: NavController,pathSe
         }
     }
     if (more_options){
-        more_options = options(pathSub)
+        more_options = options(pathSub,navController)
     }
 
 
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun options(path:MutableList<String>): Boolean {
+fun options(path:MutableList<String>,navController: NavController): Boolean {
     val mycontext = LocalContext.current
-    val userDoc = FirebaseFirestore.getInstance().collection("userus").document(FirebaseAuth.getInstance().currentUser!!.uid)
+    val chmura = FirebaseFirestore.getInstance()
+    val userDoc = chmura.collection("users").document(FirebaseAuth.getInstance().currentUser!!.uid)
     var showBottomSheet by remember { mutableStateOf(true)}
     ModalBottomSheet(onDismissRequest = {
         showBottomSheet  = false
@@ -404,24 +407,42 @@ fun options(path:MutableList<String>): Boolean {
                     1 -> {
                         val docRef = userDoc.collection("szkoly").document(path[0])
                         docRef.collection("semestry").get().addOnSuccessListener {SemSnapshot ->
-
+                        Toast.makeText(mycontext,SemSnapshot.size().toString(),Toast.LENGTH_SHORT).show()
                             for (sem in SemSnapshot.documents){
-                                sem.reference.collection("przedmioty").get().addOnSuccessListener {SubSnapshot ->
-                                    for (subject in SubSnapshot.documents){
-                                        subject.reference.delete().addOnFailureListener{
-                                            Toast.makeText(mycontext,"${subject.id} przedmiot nie udalo sie usunac",Toast.LENGTH_SHORT).show()
-                                        }
+                                sem.reference.collection("przedmioty").get().addOnSuccessListener {subSnapshot ->
+                                    for (subject in subSnapshot.documents){
+                                        subject.reference.delete()
                                     }
                                 }
-                                sem.reference.delete().addOnFailureListener{
-                                    Toast.makeText(mycontext,"${sem.id} semsetr nie udalo sie usunac",Toast.LENGTH_SHORT).show()
-                                }
+                                sem.reference.delete()
                             }
                         }
-                        docRef.delete().addOnFailureListener{
-                            Toast.makeText(mycontext,"${docRef.id} szkola nie udalo sie usunac",Toast.LENGTH_SHORT).show()
-
+                        docRef.delete().addOnSuccessListener {
+                            navController.navigate("${Screens.Przedmioty.route}")
                         }
+                    }
+                    2 ->{
+                        val docRef = userDoc
+                            .collection("szkoly").document(path[0])
+                            .collection("semestry").document(path[1])
+                        docRef.collection("przedmioty").get().addOnSuccessListener { subSnapshot ->
+                            for (subject in subSnapshot.documents){
+                                subject.reference.delete()
+                            }
+                        }
+                        docRef.delete().addOnSuccessListener {
+                            navController.navigate("${Screens.Przedmioty.route}")
+                        }
+                    }
+                    3 ->{
+                            userDoc
+                            .collection("szkoly").document(path[0])
+                            .collection("semestry").document(path[1])
+                            .collection("przedmioty").document(path[2])
+                            .delete().addOnSuccessListener {
+                                navController.navigate("${Screens.Przedmioty.route}")
+                            }
+
                     }
 
                 }

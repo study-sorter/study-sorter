@@ -19,10 +19,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.platform.LocalContext
+import com.example.studysorter.SchoolObject
+import com.example.studysorter.Szkola
+import com.example.studysorter.Semestr
+import com.example.studysorter.Subbject
 import com.google.firebase.auth.FirebaseUser
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.tasks.await
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.focus.onFocusChanged
@@ -31,9 +32,6 @@ import androidx.navigation.NavController
 import com.example.studysorter.navigation.Screens
 
 
-data class Szkola(var id: String,var listaSemestr:List<Semestr>)
-data class Semestr(var id:String,var listaSubject: List<Subbject>,var parentId:String)
-data class Subbject(var id:String, var parentId:String) //jest Subbject bo koliduje z jakąś gotow klasą
 @Composable
 fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) {
     val mycontext = LocalContext.current
@@ -45,8 +43,8 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
     var semesterName by remember { mutableStateOf("") }
     var subjectName by remember { mutableStateOf("") }
 
-    val listaSzkola: List<Szkola> by downloadData().collectAsState(initial = emptyList())
-
+//    val listaSzkola: List<Szkola> by pobierzSzkoly().collectAsState(initial = emptyList())
+    var listaSzkola: List<Szkola> = SchoolObject.getData()
 
 
     if (showDialog) {
@@ -124,6 +122,8 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
                 TextButton(onClick = {
                     if (currentUser != null) {
                         addData(currentUser, schoolName,semesterName,subjectName, chmura)
+                        SchoolObject.DownloadData()
+                        listaSzkola = SchoolObject.getData()
                     } else {
                         Log.w("Firestore", "No user is currently signed in.")
                     }
@@ -140,12 +140,13 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
         )
     }
 
-
+        //wyswietlanie danych
         LazyColumn(
 //            contentPadding = 9.dp,
             modifier = Modifier
                 .padding(innerPadding),
         ) {
+            Log.d("Show","listaSzkola size: ${listaSzkola.size}")
             items(listaSzkola){school->
                 ExpandableSchoolItem(school, navController)
             }
@@ -208,17 +209,19 @@ private fun addData(
     }
 }
 
+/* tu jest stare pobieranie danych na razie zostawiam wykomentowane
 fun downloadData(): Flow<List<Szkola>> = flow {
     val chmura = FirebaseFirestore.getInstance()
     val currentUser = FirebaseAuth.getInstance().currentUser
+
     if (currentUser != null) {
         try {
             val listaSzkola = chmura.collection("users").document(currentUser.uid).collection("szkoly").get().await().documents.map { documentSzkola ->
                 Szkola(documentSzkola.id, listaSemestr = documentSzkola.reference.collection("semestry").get().await()
                     .documents.map { documentSemestr ->
-                        Semestr(documentSemestr.id, parentId = documentSzkola.id, listaSubject = documentSemestr.reference.collection("przedmioty").get().await()
+                        Semestr(documentSemestr.id, listaSubject = documentSemestr.reference.collection("przedmioty").get().await()
                             .documents.map { documentPrzedmiot ->
-                                Subbject(documentPrzedmiot.id,documentSemestr.id)
+                                Subbject(documentPrzedmiot.id)
                             })
                     })
             }
@@ -230,7 +233,7 @@ fun downloadData(): Flow<List<Szkola>> = flow {
     } else {
         emit(emptyList())
     }
-}
+}*/
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ExpandableSchoolItem(school: Szkola, navController: NavController) {
@@ -288,6 +291,8 @@ fun ExpandableSemesterItem(semester: Semestr, navController: NavController, path
     var expanded by remember { mutableStateOf(false) }
     var more_options by remember { mutableStateOf(false)}
     var pathSem = mutableListOf(path[0],semester.id)
+    Log.d("Show","listaSubject size: ${semester.listaSubject.size}")
+
     Card(
         modifier = Modifier
             .fillMaxWidth()

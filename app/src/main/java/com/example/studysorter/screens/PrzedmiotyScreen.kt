@@ -30,6 +30,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavController
 import com.example.studysorter.navigation.Screens
+import com.google.firebase.firestore.DocumentReference
 
 
 @Composable
@@ -122,8 +123,9 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
                 TextButton(onClick = {
                     if (currentUser != null) {
                         addData(currentUser, schoolName,semesterName,subjectName, chmura)
-                        SchoolObject.DownloadData()
-                        listaSzkola = SchoolObject.getData()
+                        //dwie poniżesz linijki służą do aktualizacji danych
+                        SchoolObject.DownloadData() //aktualizacja danych w SchoolObject/SchoolRepository
+                        listaSzkola = SchoolObject.getData()//aktualizacja danych wyświetlanych
                     } else {
                         Log.w("Firestore", "No user is currently signed in.")
                     }
@@ -178,7 +180,10 @@ private fun addData(
     // w razie jakby było mięcej eleentów niż nazwa lepiej to przenieść do Onclick i do parametru podać tylko hashMap (tak mi się wydaje)
     val schoolMap = hashMapOf("name" to schoolName)
     val semesterMap = hashMapOf("name" to semesterName)
-    val subjectMap = hashMapOf("name" to subjectName)
+    val subjectMap = hashMapOf(
+        "name" to subjectName,
+        "ulubione" to false
+    )
     if (schoolName.isNotEmpty()){
         val dodawanaSzkola = chmura.collection("users").document(currentUser.uid).collection("szkoly").document(schoolName)
         chmura.runTransaction {transaction ->
@@ -239,7 +244,7 @@ fun downloadData(): Flow<List<Szkola>> = flow {
 fun ExpandableSchoolItem(school: Szkola, navController: NavController) {
     var expanded by remember { mutableStateOf(false) }
     var more_options by remember { mutableStateOf(false)}
-    var path = mutableListOf(school.id)
+    val path = mutableListOf(school.id)
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -281,7 +286,7 @@ fun ExpandableSchoolItem(school: Szkola, navController: NavController) {
         }
     }
     if (more_options){
-        more_options = options(path,navController)
+        more_options = options(path,navController,null)
     }
 }
 
@@ -290,7 +295,7 @@ fun ExpandableSchoolItem(school: Szkola, navController: NavController) {
 fun ExpandableSemesterItem(semester: Semestr, navController: NavController, path: MutableList<String>) {
     var expanded by remember { mutableStateOf(false) }
     var more_options by remember { mutableStateOf(false)}
-    var pathSem = mutableListOf(path[0],semester.id)
+    val pathSem = mutableListOf(path[0],semester.id)
     Log.d("Show","listaSubject size: ${semester.listaSubject.size}")
 
     Card(
@@ -301,7 +306,7 @@ fun ExpandableSemesterItem(semester: Semestr, navController: NavController, path
                 onLongClick = {
                     more_options = true
                 },
-                onClick ={
+                onClick = {
                     if (semester.listaSubject.isNotEmpty()) {
                         expanded = !expanded
                     }
@@ -328,32 +333,32 @@ fun ExpandableSemesterItem(semester: Semestr, navController: NavController, path
 
     if (expanded) {
         for (subject in semester.listaSubject) {
-            ExpandableSubjectItem(subject, navController,pathSem)
+            SubjectItem(subject, navController,pathSem)
         }
     }
     if (more_options){
-        more_options = options(pathSem,navController)
+        more_options = options(pathSem,navController,null)
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ExpandableSubjectItem(subject: Subbject, navController: NavController,pathSem: MutableList<String>) {
+private fun SubjectItem(subject: Subbject, navController: NavController,pathSem: MutableList<String>) {
     var more_options by remember { mutableStateOf(false)}
-    var pathSub = mutableListOf(pathSem[0],pathSem[1],subject.id)
+    val pathSub = mutableListOf(pathSem[0],pathSem[1],subject.id)
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 32.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
             .combinedClickable(
-        onLongClick = {
-            more_options = true
-        },
-        onClick ={
-            // Navigate to detail screen on subject click
-            navController.navigate("${Screens.Przedmioty.route}/${subject.id}")
-        }
-        )
+                onLongClick = {
+                    more_options = true
+                },
+                onClick = {
+                    // Navigate to detail screen on subject click
+                    navController.navigate("${Screens.Przedmioty.route}/${subject.id}")
+                }
+            )
 
     ) {
         Row {
@@ -365,30 +370,47 @@ fun ExpandableSubjectItem(subject: Subbject, navController: NavController,pathSe
         }
     }
     if (more_options){
-        more_options = options(pathSub,navController)
+        more_options = options(pathSub,navController,subject)
     }
-
-
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun options(path:MutableList<String>,navController: NavController): Boolean {
-    val mycontext = LocalContext.current
-    val chmura = FirebaseFirestore.getInstance()
-    val userDoc = chmura.collection("users").document(FirebaseAuth.getInstance().currentUser!!.uid)
-    var showBottomSheet by remember { mutableStateOf(true)}
-    ModalBottomSheet(onDismissRequest = {
-        showBottomSheet  = false
-    },
-        sheetState = rememberModalBottomSheetState(true)
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.padding(start = 20.dp,bottom = 50.dp)
+fun options(
+    path: MutableList<String>,
+    navController: NavController,
+    subject: Subbject?
+): Boolean {
+    var showBottomSheet by remember { mutableStateOf(true) }
+    if (path.size > 0) {
+        val mycontext = LocalContext.current
+        val chmura = FirebaseFirestore.getInstance()
+        val userDoc = chmura.collection("users").document(FirebaseAuth.getInstance().currentUser!!.uid)
+        val docRef: DocumentReference
+        docRef = when (path.size) {
+            1 ->userDoc
+                    .collection("szkoly").document(path[0])
+            2->userDoc
+                    .collection("szkoly").document(path[0])
+                    .collection("semestry").document(path[1])
+            3->userDoc
+                    .collection("szkoly").document(path[0])
+                    .collection("semestry").document(path[1])
+                    .collection("przedmioty").document(path[2])
+            else->userDoc
+        }
+        ModalBottomSheet(
+            onDismissRequest = {
+                showBottomSheet = false
+            },
+            sheetState = rememberModalBottomSheetState(true)
         ) {
-            Option(Icons.Default.Edit, "Edytuj") {
-                when(path.size){
-                   /* 1 -> {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.padding(start = 20.dp, bottom = 50.dp)
+            ) {
+                Option(Icons.Default.Edit, "Edytuj") {
+                    when (path.size) {
+                        /* 1 -> {
                         Toast.makeText(mycontext,path[0] , Toast.LENGTH_SHORT).show()
                     }
                     2 ->{
@@ -400,62 +422,76 @@ fun options(path:MutableList<String>,navController: NavController): Boolean {
                         Toast.makeText(mycontext,path[1] , Toast.LENGTH_SHORT).show()
                         Toast.makeText(mycontext,path[2] , Toast.LENGTH_SHORT).show()
                     }*/
+                    }
+
                 }
+                if (path.size == 3) {
+                    val value = subject!!.ulubione
+                    val icon :ImageVector
+                    icon = if (value){
+                        Icons.Default.Favorite
+                    }else{
+                        Icons.Default.FavoriteBorder
+                    }
+                    Option(icon, "Dodaj do Ulubionych") {
+                        chmura.runTransaction { transaction ->
+                            transaction.update(docRef, "ulubione", !value)
+                        }
+                        SchoolObject.DownloadData()
+                        refreshCurrentFragment(navController)
+                    }
+                }
+                Option(icon = Icons.Default.Delete, text = "Usuń") {
+                    when (path.size) {
+                        1 -> {
+                            docRef.collection("semestry").get()
+                                .addOnSuccessListener { SemSnapshot ->
+                                    Toast.makeText(
+                                        mycontext,
+                                        SemSnapshot.size().toString(),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    for (sem in SemSnapshot.documents) {
+                                        sem.reference.collection("przedmioty").get()
+                                            .addOnSuccessListener { subSnapshot ->
+                                                for (subject in subSnapshot.documents) {
+                                                    subject.reference.delete()
+                                                }
+                                            }
+                                        sem.reference.delete()
+                                    }
+                                }
+                            docRef.delete().addOnSuccessListener {
+                                refreshCurrentFragment(navController)
+                            }
+                        }
 
-            }
-            Option(Icons.Default.FavoriteBorder, "Dodaj do Ulubionych") {
-
-            }
-            Option(icon = Icons.Default.Delete, text ="Usuń" ){
-
-                when(path.size){
-                    1 -> {
-                        val docRef = userDoc.collection("szkoly").document(path[0])
-                        docRef.collection("semestry").get().addOnSuccessListener {SemSnapshot ->
-                        Toast.makeText(mycontext,SemSnapshot.size().toString(),Toast.LENGTH_SHORT).show()
-                            for (sem in SemSnapshot.documents){
-                                sem.reference.collection("przedmioty").get().addOnSuccessListener {subSnapshot ->
-                                    for (subject in subSnapshot.documents){
+                        2 -> {
+                            docRef.collection("przedmioty").get()
+                                .addOnSuccessListener { subSnapshot ->
+                                    for (subject in subSnapshot.documents) {
                                         subject.reference.delete()
                                     }
                                 }
-                                sem.reference.delete()
+                            docRef.delete().addOnSuccessListener {
+                                refreshCurrentFragment(navController)
                             }
                         }
-                        docRef.delete().addOnSuccessListener {
-                            navController.navigate("${Screens.Przedmioty.route}")
+
+                        3 -> {
+                            docRef.delete().addOnSuccessListener {
+                                refreshCurrentFragment(navController)
+                                }
+
                         }
-                    }
-                    2 ->{
-                        val docRef = userDoc
-                            .collection("szkoly").document(path[0])
-                            .collection("semestry").document(path[1])
-                        docRef.collection("przedmioty").get().addOnSuccessListener { subSnapshot ->
-                            for (subject in subSnapshot.documents){
-                                subject.reference.delete()
-                            }
-                        }
-                        docRef.delete().addOnSuccessListener {
-                            navController.navigate("${Screens.Przedmioty.route}")
-                        }
-                    }
-                    3 ->{
-                            userDoc
-                            .collection("szkoly").document(path[0])
-                            .collection("semestry").document(path[1])
-                            .collection("przedmioty").document(path[2])
-                            .delete().addOnSuccessListener {
-                                navController.navigate("${Screens.Przedmioty.route}")
-                            }
 
                     }
-
                 }
             }
+
         }
 
     }
-
     return showBottomSheet
 }
 
@@ -473,7 +509,11 @@ private fun Option(icon: ImageVector, text: String, function: () -> Unit) {
         Text(text)
     }
 }
-
+private fun refreshCurrentFragment(navController: NavController){
+    val id = navController.currentDestination?.id
+    navController.popBackStack(id!!,true)
+    navController.navigate(id)
+}
 /* tu są funkcje dla testowania
 @Preview(showBackground = true)
 @Composable

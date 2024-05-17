@@ -1,16 +1,18 @@
 package com.example.studysorter
 
 import android.util.Log
+import androidx.compose.ui.res.fontResource
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
 data class Szkola(var id: String,var listaSemestr:List<Semestr>)
 data class Semestr(var id:String,var listaSubject: List<Subbject>)
-data class Subbject(var id:String) //jest Subbject bo koliduje z jakąś gotow klasą
+data class Subbject(var id:String,var ulubione:Boolean) //jest Subbject bo koliduje z jakąś gotow klasą
 class SchoolRepository {
     private var listaSzkola:MutableList<Szkola> = mutableListOf()
 
     fun getData():List<Szkola>{
+
         Log.d("DataGet","Getting Data")
         return listaSzkola
     }
@@ -42,7 +44,8 @@ class SchoolRepository {
                                         .get().addOnSuccessListener { subjectSnapshot ->
                                             Log.d("Data","semesterSnapshot size: ${subjectSnapshot.size()}")
                                             for (subject in subjectSnapshot){
-                                                listaSubject.add(Subbject(subject.id))
+
+                                                listaSubject.add(Subbject(subject.id,subject.data["ulubione"] as Boolean))
                                             }
                                         }.addOnFailureListener{ e -> Log.d("Data","Downloading data incomplete(Subject) \"${e.message}\" ") }
                                     listaSemestr.add(Semestr(semestr.id, listaSubject))

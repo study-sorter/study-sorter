@@ -31,7 +31,7 @@ fun SetUpNavGraph(
             PrzedmiotyScreen(innerPadding = innerPadding, navController = navController)
         }
         composable(Screens.Ulubione.route){
-            UlubioneScreen(innerPadding = innerPadding)
+            UlubioneScreen(innerPadding = innerPadding, navController = navController)
         }
         composable(
             route = "${Screens.Przedmioty.route}/{subjectId}",

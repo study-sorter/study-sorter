@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavController
 import com.example.studysorter.navigation.Screens
 import com.google.firebase.firestore.DocumentReference
+import kotlin.Exception
 
 
 @Composable
@@ -122,7 +123,7 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
             confirmButton = {
                 TextButton(onClick = {
                     if (currentUser != null) {
-                        addData(currentUser, schoolName,semesterName,subjectName, chmura)
+                        addData(currentUser, schoolName,semesterName,Subbject(subjectName,false), chmura)
                         //dwie poniżesz linijki służą do aktualizacji danych
                         SchoolObject.DownloadData() //aktualizacja danych w SchoolObject/SchoolRepository
                         listaSzkola = SchoolObject.getData()//aktualizacja danych wyświetlanych
@@ -173,7 +174,7 @@ private fun addData(
     currentUser: FirebaseUser,//sprawdzamy przy wywołaniu czy użytkownik jest zalogowany więc nie ma szans że nie będzie
     schoolName: String,
     semesterName: String,
-    subjectName: String,
+    subjectObject: Subbject,
     chmura: FirebaseFirestore
 ){
     Log.d("test","addDatafunkcja")
@@ -181,8 +182,8 @@ private fun addData(
     val schoolMap = hashMapOf("name" to schoolName)
     val semesterMap = hashMapOf("name" to semesterName)
     val subjectMap = hashMapOf(
-        "name" to subjectName,
-        "ulubione" to false
+        "name" to subjectObject.id,
+        "ulubione" to subjectObject.ulubione
     )
     if (schoolName.isNotEmpty()){
         val dodawanaSzkola = chmura.collection("users").document(currentUser.uid).collection("szkoly").document(schoolName)
@@ -201,8 +202,8 @@ private fun addData(
                     transaction.set(dodawanaSemestr,semesterMap)
                 }
             }
-            if (subjectName.isNotEmpty()){
-                val dodawanaSubject = chmura.collection("users").document(currentUser.uid).collection("szkoly").document(schoolName).collection("semestry").document(semesterName).collection("przedmioty").document(subjectName)
+            if (subjectObject.id.isNotEmpty()){
+                val dodawanaSubject = chmura.collection("users").document(currentUser.uid).collection("szkoly").document(schoolName).collection("semestry").document(semesterName).collection("przedmioty").document(subjectObject.id)
                 chmura.runTransaction {transaction ->
                     //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
                     if (!transaction.get(dodawanaSubject).exists()){
@@ -382,10 +383,14 @@ fun options(
 ): Boolean {
     var showBottomSheet by remember { mutableStateOf(true) }
     if (path.size > 0) {
+        var listaSzkola = SchoolObject.getData()
         val mycontext = LocalContext.current
+        val currentUser = FirebaseAuth.getInstance().currentUser
         val chmura = FirebaseFirestore.getInstance()
         val userDoc = chmura.collection("users").document(FirebaseAuth.getInstance().currentUser!!.uid)
         val docRef: DocumentReference
+        var showDialog by remember { mutableStateOf(false)}
+
         docRef = when (path.size) {
             1 ->userDoc
                     .collection("szkoly").document(path[0])
@@ -409,22 +414,125 @@ fun options(
                 modifier = Modifier.padding(start = 20.dp, bottom = 50.dp)
             ) {
                 Option(Icons.Default.Edit, "Edytuj") {
-                    when (path.size) {
-                        /* 1 -> {
-                        Toast.makeText(mycontext,path[0] , Toast.LENGTH_SHORT).show()
-                    }
-                    2 ->{
-                        Toast.makeText(mycontext,path[0] , Toast.LENGTH_SHORT).show()
-                        Toast.makeText(mycontext,path[1] , Toast.LENGTH_SHORT).show()
-                    }
-                    3 ->{
-                        Toast.makeText(mycontext,path[0] , Toast.LENGTH_SHORT).show()
-                        Toast.makeText(mycontext,path[1] , Toast.LENGTH_SHORT).show()
-                        Toast.makeText(mycontext,path[2] , Toast.LENGTH_SHORT).show()
-                    }*/
-                    }
-
+                   showDialog = true
                 }
+                if (showDialog) {
+                    var schoolName by remember { mutableStateOf(path[0]) }
+                    var semesterName by remember { mutableStateOf("") }
+                    var subjectName by remember { mutableStateOf("") }
+                        if (path.size>1) {
+                            semesterName = path[1]
+                            if (path.size > 2) {
+                                subjectName = path[2]
+                            }
+                        }
+                    AlertDialog(
+                        onDismissRequest = { showDialog = false },
+                        title = { Text("Edytuj nazwę szkoły lub kierunku") },
+                        text = {
+                            var focusSchool by remember { mutableStateOf(false)}
+                            var focusSemester by remember { mutableStateOf(false)}
+                            Column {
+                                OutlinedTextField(
+                                    value = schoolName,
+                                    onValueChange = { schoolName = it },
+                                    label = { Text("Nazwa szkoły lub kierunku") },
+                                    modifier = Modifier.onFocusChanged { focusSchool = it.isFocused }
+                                )
+                                if (focusSchool){
+                                    Box {
+                                        LazyColumn(modifier = Modifier.padding(start = 10.dp)) {
+                                            items(listaSzkola) { school ->
+                                                HorizontalDivider(color = Color.Gray)
+                                                Text(
+                                                    text = school.id,
+                                                    modifier = Modifier
+                                                        .clickable { schoolName = school.id }
+                                                        .padding(8.dp)
+                                                        .fillMaxWidth()
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                OutlinedTextField(
+                                    value = semesterName,
+                                    onValueChange = { semesterName = it },
+                                    label = { Text("Nazwa lub numer semestru") },
+                                    modifier = Modifier.onFocusChanged {
+                                        focusSemester = it.isFocused
+                                    }
+                                )
+
+                                if (focusSemester){
+                                    var listaSemTym = emptyList<Semestr>()
+
+                                    for (school in listaSzkola){
+                                        if (school.id == schoolName){
+                                            listaSemTym = school.listaSemestr
+                                            break
+                                        }
+                                    }
+                                    Box {
+                                        LazyColumn(modifier = Modifier.padding(start = 10.dp)) {
+                                            items(listaSemTym) { semester ->
+                                                HorizontalDivider(color = Color.Gray)
+                                                Text(
+                                                    text = semester.id,
+                                                    modifier = Modifier
+                                                        .clickable {
+                                                            semesterName = semester.id
+                                                        }
+                                                        .padding(8.dp)
+                                                        .fillMaxWidth()
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                OutlinedTextField(
+                                    value = subjectName,
+                                    onValueChange = { subjectName = it },
+                                    label = { Text("Nazwa Przedmiotu") }
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                if (currentUser != null&& path.size == 3) {
+                                    if (subjectName != path[2]){
+                                        var subjectHolder = subject
+
+                                        subjectHolder!!.id = subjectName
+                                        chmura.runTransaction { transaction ->
+                                            Log.d("Edit", "start delete")
+                                            transaction.delete(docRef)
+                                            Log.d("Edit", "end delete")
+                                            addData(currentUser,schoolName,semesterName,subjectHolder,chmura)
+                                        }
+                                    }
+
+
+                                }
+                                showDialog = false
+
+                            }) {
+                                Text("Potwierdź")
+                            }
+                            Log.d("Edit", "confirm button")
+
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDialog = false }) {
+                                Text("Anuluj")
+                            }
+                            Log.d("Edit", "ended dismiss button ")
+                        }
+                    )
+                }
+                Log.d("Edit", "ended alert")
+
                 if (path.size == 3) {
                     val value = subject!!.ulubione
                     val icon :ImageVector

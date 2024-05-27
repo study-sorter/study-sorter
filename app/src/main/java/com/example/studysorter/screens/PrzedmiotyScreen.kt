@@ -476,7 +476,7 @@ fun options(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.padding(start = 20.dp, bottom = 50.dp)
             ) {
-                if (path.size == 2){
+                if (path.size == 3){
                     Option(Icons.Default.Edit, "Edytuj") {
                         showDialog = true
                     }
@@ -632,6 +632,7 @@ fun options(
                                 }*/
                                 
                                 showDialog = false
+                                refreshCurrentFragment(navController)
 
                             }) {
                                 Text("Potwierdź")

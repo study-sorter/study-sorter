@@ -117,11 +117,10 @@ dependencies {
 
 
 
+
     implementation ("io.github.grizzi91:bouquet:1.1.2")
 
     implementation ("com.google.accompanist:accompanist-pager:0.28.0")
-
-
 
 
 

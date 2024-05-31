@@ -1,15 +1,34 @@
 package com.example.studysorter.screens
 
+import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.Context
 import android.widget.CalendarView
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.material.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -20,7 +39,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Locale
 
 @Composable
 fun HomeScreen(innerPadding: PaddingValues) {
@@ -61,6 +81,9 @@ fun HomeScreen(innerPadding: PaddingValues) {
         val eventCalendar = Calendar.getInstance().apply { time = date }
         eventCalendar.get(Calendar.MONTH) == selectedDate.value.get(Calendar.MONTH) &&
                 eventCalendar.get(Calendar.YEAR) == selectedDate.value.get(Calendar.YEAR)
+    }.sortedBy { event ->
+        val timestamp = event["date"] as com.google.firebase.Timestamp
+        timestamp.toDate()
     }
 
     Column(
@@ -104,15 +127,19 @@ fun HomeScreen(innerPadding: PaddingValues) {
                 event = selectedEvent.value!!,
                 onDismissRequest = { showEditEventDialog.value = false },
                 onDeleteEvent = { event ->
-                    deleteEvent(event)
-                    showEditEventDialog.value = false
+                    deleteEvent(event, events.value) { updatedEvents ->
+                        events.value = updatedEvents
+                        showEditEventDialog.value = false
+                    }
                 },
                 onEditEvent = { event ->
+                    selectedEvent.value = event
                     showAddEventDialog.value = true
-                    // Przekazujemy wybrane wydarzenie do dialogu dodawania/edycji
                 }
             )
         }
+
+
 
         if (showAddEventDialog.value) {
             AddEventDialog(
@@ -132,15 +159,14 @@ fun EventDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        buttons = {
-            Button(
-                onClick = onDismissRequest,
-                modifier = Modifier.padding(8.dp)
-            ) {
+        confirmButton = {
+            TextButton(onClick = onDismissRequest) {
                 Text("Zamknij")
             }
         },
-        title = { Text("Wydarzenia") },
+        title = {
+            Text("Wydarzenia", style = MaterialTheme.typography.headlineSmall)
+        },
         text = {
             LazyColumn(
                 contentPadding = PaddingValues(16.dp),
@@ -160,12 +186,12 @@ fun EventDialog(
                                     onLongPress = { onEventLongPress(event) }
                                 )
                             },
-                        elevation = 4.dp
+                        elevation = CardDefaults.elevatedCardElevation()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Nazwa: ${event["name"]}", style = MaterialTheme.typography.h6)
-                            Text("Data: $dateString", style = MaterialTheme.typography.body2)
-                            Text("Godzina: ${event["hour"]}", style = MaterialTheme.typography.body2)
+                            Text("Nazwa: ${event["name"]}", style = MaterialTheme.typography.titleMedium)
+                            Text("Data: $dateString", style = MaterialTheme.typography.bodyMedium)
+                            Text("Godzina: ${event["hour"]}", style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
@@ -174,60 +200,7 @@ fun EventDialog(
     )
 }
 
-
-@Composable
-fun EditOrDeleteEventDialog(
-    event: Map<String, Any>,
-    onDismissRequest: () -> Unit,
-    onDeleteEvent: (Map<String, Any>) -> Unit,
-    onEditEvent: (Map<String, Any>) -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        buttons = {
-            Column {
-                Button(
-                    onClick = {
-                        onEditEvent(event)
-                        onDismissRequest()
-                    },
-                    modifier = Modifier.padding(8.dp)
-                ) {
-                    Text("Edytuj")
-                }
-                Button(
-                    onClick = {
-                        onDeleteEvent(event)
-                        onDismissRequest()
-                    },
-                    modifier = Modifier.padding(8.dp)
-                ) {
-                    Text("Usuń")
-                }
-                Button(
-                    onClick = onDismissRequest,
-                    modifier = Modifier.padding(8.dp)
-                ) {
-                    Text("Anuluj")
-                }
-            }
-        },
-        title = { Text("Opcje Wydarzenia") },
-        text = {
-            val timestamp = event["date"] as com.google.firebase.Timestamp
-            val date = timestamp.toDate()
-            val formatter = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-            val dateString = formatter.format(date)
-            Column {
-                Text("Nazwa: ${event["name"]}", style = MaterialTheme.typography.h6)
-                Text("Data: $dateString", style = MaterialTheme.typography.body2)
-                Text("Godzina: ${event["hour"]}", style = MaterialTheme.typography.body2)
-            }
-        }
-    )
-}
-
-fun deleteEvent(event: Map<String, Any>) {
+fun deleteEvent(event: Map<String, Any>, events: List<Map<String, Any>>, updateEvents: (List<Map<String, Any>>) -> Unit) {
     val currentUser = FirebaseAuth.getInstance().currentUser?.uid
     val firestoreInstance = FirebaseFirestore.getInstance()
     val documentId = event["id"] as String
@@ -237,11 +210,15 @@ fun deleteEvent(event: Map<String, Any>) {
         .delete()
         .addOnSuccessListener {
             println("Wydarzenie usunięte!")
+            // Aktualizacja stanu listy wydarzeń
+            updateEvents(events.filter { it["id"] != documentId })
         }
         .addOnFailureListener { e ->
             println("Error deleting document: $e")
         }
 }
+
+
 
 @Composable
 fun AddEventDialog(
@@ -252,33 +229,22 @@ fun AddEventDialog(
     val context = LocalContext.current
     val eventName = remember { mutableStateOf(eventToEdit?.get("name") as? String ?: "") }
     val eventHour = remember { mutableStateOf(eventToEdit?.get("hour") as? String ?: "") }
+    val eventDate = remember { mutableStateOf(selectedDate) }
+
     AlertDialog(
         onDismissRequest = onDialogClose,
         confirmButton = {
-            Button(onClick = {
+            TextButton(onClick = {
                 if (eventName.value.isNotBlank() && eventHour.value.isNotBlank()) {
-                    val event = hashMapOf(
-                        "name" to eventName.value,
-                        "date" to selectedDate.time,
-                        "hour" to eventHour.value
-                    )
-                    val currentUser = FirebaseAuth.getInstance().currentUser?.uid
-                    val firestoreInstance = FirebaseFirestore.getInstance()
-
-                    if (eventToEdit != null) {
-                        val documentId = eventToEdit["id"] as String
-                        firestoreInstance.collection("users")
-                            .document(currentUser!!)
-                            .collection("events").document(documentId)
-                            .set(event)
-                    } else {
-                        firestoreInstance.collection("users")
-                            .document(currentUser!!)
-                            .collection("events").add(event)
+                    saveEvent(
+                        eventName = eventName.value,
+                        eventDate = eventDate.value,
+                        eventHour = eventHour.value,
+                        eventToEdit = eventToEdit
+                    ) {
+                        Toast.makeText(context, "Wydarzenie zapisane pomyślnie", Toast.LENGTH_SHORT).show()
+                        onDialogClose()
                     }
-
-                    Toast.makeText(context, "Wydarzenie zapisane pomyślnie", Toast.LENGTH_SHORT).show()
-                    onDialogClose()
                 } else {
                     Toast.makeText(context, "Proszę wypełnić wszystkie pola", Toast.LENGTH_SHORT).show()
                 }
@@ -287,36 +253,134 @@ fun AddEventDialog(
             }
         },
         dismissButton = {
-            Button(onClick = onDialogClose) {
+            TextButton(onClick = onDialogClose) {
                 Text("Anuluj")
             }
         },
+        title = {
+            Text(text = if (eventToEdit != null) "Edytuj Wydarzenie" else "Dodaj Wydarzenie", style = MaterialTheme.typography.headlineSmall)
+        },
         text = {
-            Column {
-                TextField(
+            Column(modifier = Modifier.padding(16.dp)) {
+                OutlinedTextField(
                     value = eventName.value,
                     onValueChange = { eventName.value = it },
-                    label = { Text("Nazwa Wydarzenia") }
+                    label = { Text("Nazwa Wydarzenia") },
+                    modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(modifier = Modifier.height(8.dp))
                 Button(onClick = {
-                    val currentHour = selectedDate.get(Calendar.HOUR_OF_DAY)
-                    val currentMinute = selectedDate.get(Calendar.MINUTE)
-                    TimePickerDialog(
-                        context,
-                        { _, hourOfDay, minute ->
-                            selectedDate.set(Calendar.HOUR_OF_DAY, hourOfDay)
-                            selectedDate.set(Calendar.MINUTE, minute)
-                            eventHour.value = String.format("%02d:%02d", hourOfDay, minute)
-                        },
-                        currentHour,
-                        currentMinute,
-                        true
-                    ).show()
+                    showTimePickerDialog(context) { hourOfDay, minute ->
+                        eventDate.value.set(Calendar.HOUR_OF_DAY, hourOfDay)
+                        eventDate.value.set(Calendar.MINUTE, minute)
+                        eventHour.value = String.format("%02d:%02d", hourOfDay, minute)
+                    }
                 }) {
                     Text("Wybierz Godzinę Wydarzenia")
                 }
                 Text("Wybrana Godzina: ${eventHour.value}")
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = {
+                    showDatePickerDialog(context) { year, month, dayOfMonth ->
+                        val newDate = Calendar.getInstance()
+                        newDate.set(year, month, dayOfMonth)
+                        eventDate.value = newDate // Update the eventDate state
+                    }
+                }) {
+                    Text("Wybierz Datę Wydarzenia")
+                }
+                Text("Wybrana Data: ${SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(eventDate.value.time)}")
             }
         }
     )
 }
+
+// Function to show TimePickerDialog
+private fun showTimePickerDialog(context: Context, onTimeSetListener: (Int, Int) -> Unit) {
+    val calendar = Calendar.getInstance()
+    val hour = calendar.get(Calendar.HOUR_OF_DAY)
+    val minute = calendar.get(Calendar.MINUTE)
+    TimePickerDialog(context, { _, hourOfDay, minuteOfDay ->
+        onTimeSetListener(hourOfDay, minuteOfDay)
+    }, hour, minute, true).show()
+}
+
+// Function to show DatePickerDialog
+private fun showDatePickerDialog(context: Context, onDateSetListener: (Int, Int, Int) -> Unit) {
+    val calendar = Calendar.getInstance()
+    val year = calendar.get(Calendar.YEAR)
+    val month = calendar.get(Calendar.MONTH)
+    val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
+    DatePickerDialog(context, { _, year, monthOfYear, dayOfMonth ->
+        onDateSetListener(year, monthOfYear, dayOfMonth)
+    }, year, month, dayOfMonth).show()
+}
+
+@Composable
+fun EditOrDeleteEventDialog(
+    event: Map<String, Any>,
+    onDismissRequest: () -> Unit,
+    onDeleteEvent: (Map<String, Any>) -> Unit,
+    onEditEvent: (Map<String, Any>) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            TextButton(onClick = { onEditEvent(event) }) {
+                Text("Edytuj")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onDeleteEvent(event) }) {
+                Text("Usuń")
+            }
+        },
+        title = {
+            Text("Opcje Wydarzenia", style = MaterialTheme.typography.headlineSmall)
+        },
+        text = {
+            Text("Co chcesz zrobić z tym wydarzeniem?", style = MaterialTheme.typography.bodyMedium)
+        }
+    )
+}
+fun saveEvent(
+    eventName: String,
+    eventDate: Calendar,
+    eventHour: String,
+    eventToEdit: Map<String, Any>?,
+    onSuccess: () -> Unit
+) {
+    val currentUser = FirebaseAuth.getInstance().currentUser?.uid
+    val firestoreInstance = FirebaseFirestore.getInstance()
+
+    val event = hashMapOf(
+        "name" to eventName,
+        "date" to eventDate.time,
+        "hour" to eventHour
+    )
+
+    if (eventToEdit != null) {
+        val documentId = eventToEdit["id"] as String
+        firestoreInstance.collection("users")
+            .document(currentUser!!)
+            .collection("events").document(documentId)
+            .set(event)
+            .addOnSuccessListener {
+                onSuccess()
+            }
+            .addOnFailureListener { e ->
+                println("Error updating document: $e")
+            }
+    } else {
+        firestoreInstance.collection("users")
+            .document(currentUser!!)
+            .collection("events").add(event)
+            .addOnSuccessListener {
+                onSuccess()
+            }
+            .addOnFailureListener { e ->
+                println("Error adding document: $e")
+            }
+    }
+}
+

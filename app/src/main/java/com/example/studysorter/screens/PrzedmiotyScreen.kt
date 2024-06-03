@@ -161,6 +161,7 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
                             chmura,
                             listaSzkola
                         )
+                        refreshCurrentFragment(navController)
                         //dwie poniżesz linijki służą do aktualizacji danych
                         /*SchoolObject.DownloadData() //aktualizacja danych w SchoolObject/SchoolRepository
                         listaSzkola = SchoolObject.getData()//aktualizacja danych wyświetlanych*/
@@ -215,20 +216,38 @@ private fun addData(
     chmura: FirebaseFirestore,
     listaSzkola: MutableList<Szkola>
 ) {
+    var found = false
+    var _school = school
+    var _semester = semester
+    var _subject = subject
+
     // w razie jakby było mięcej eleentów niż nazwa lepiej to przenieść do Onclick i do parametru podać tylko hashMap (tak mi się wydaje)
     if (school.id.isNotEmpty()) {
+        Log.wtf("test","dodawanie szkoly rozpoczęte")
+
         val schoolMap = hashMapOf("name" to school.id)
         val dodawanaSzkola = chmura.document("users/${currentUser.uid}/szkoly/${school.id}")
         chmura.runTransaction { transaction ->
             //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
             if (!transaction.get(dodawanaSzkola).exists()) {
                 transaction.set(dodawanaSzkola, schoolMap)
-                if (!listaSzkola.contains(school)){
-                    listaSzkola.add(school)
-                }
             }
         }
-        if (semester != null ) {
+        found = false
+        for (sch in listaSzkola){
+            if (sch.id == _school.id){
+                _school = sch
+                found = true
+                break
+            }
+        }
+        if(!found){
+            listaSzkola.add(_school)
+        }
+        Log.wtf("test","dodawanie szkoly zakonczone")
+        if (semester != null && semester.id != "") {
+            Log.wtf("test","dodawanie semst rozpoczęte $_semester")
+
             val semesterMap = hashMapOf("name" to semester.id)
             val dodawanaSemestr = dodawanaSzkola.collection("semestry").document(semester.id)
 
@@ -236,12 +255,26 @@ private fun addData(
                 //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
                 if (!transaction.get(dodawanaSemestr).exists()) {
                     transaction.set(dodawanaSemestr, semesterMap)
-                    if (!school.listaSemestr.contains(semester)){
-                        school.listaSemestr.add(semester)
-                    }
                 }
             }
-            if (subject != null) {
+            found = false
+            if (semester.id != ""){
+                for (sem in _school.listaSemestr){
+                    if (sem.id == _semester!!.id){
+                        _semester = sem
+                        found = true
+                        break
+                    }
+                }
+                Log.d("test",found.toString())
+                if(!found){
+                    _school.listaSemestr.add(_semester!!)
+                }
+            }
+
+            Log.wtf("test","dodawanie semst zakonczone")
+
+            if (subject != null && subject.id != "") {
                 val subjectMap = hashMapOf(
                     "name" to subject.id,
                     "ulubione" to subject.ulubione
@@ -250,13 +283,21 @@ private fun addData(
                 chmura.runTransaction { transaction ->
                     //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
                     if (!transaction.get(dodawanaSubject).exists()) {
-                        if (!semester.listaSubject.contains(subject)){
-                            semester.listaSubject.add(subject)
-                        }
 
                         transaction.set(dodawanaSubject, subjectMap)
                     }
                 }
+                found = false
+                    for (sub in _semester!!.listaSubject){
+                        if (sub.id == _subject!!.id){
+                            _subject = sub
+                            found = true
+                            break
+                        }
+                    }
+                    if(!found){
+                        _semester.listaSubject.add(_subject!!)
+                    }
             }
         }
     }
@@ -449,7 +490,27 @@ fun options(
         val userDoc =
             chmura.collection("users").document(FirebaseAuth.getInstance().currentUser!!.uid)
         var showDialog by remember { mutableStateOf(false) }
-
+        var school = Szkola("", mutableListOf())
+        var semestr = Semestr("", mutableListOf())
+        var schoolName by remember { mutableStateOf(path[0]) }
+        var semesterName by remember { mutableStateOf("") }
+        var subjectName by remember { mutableStateOf("") }
+        if (path.size > 1) {
+            semesterName = path[1]
+            if (path.size > 2) {
+                subjectName = path[2]
+            }
+        }
+        for (sch in listaSzkola) {
+            if (sch.id == schoolName){
+                school = sch
+                for (sem in sch.listaSemestr){
+                    if (sem.id == semesterName){
+                        semestr = sem
+                    }
+                }
+            }
+        }
         val docRef = when (path.size) {
             1 -> userDoc
                 .collection("szkoly").document(path[0])
@@ -482,28 +543,8 @@ fun options(
                     }
                 }
                 if (showDialog) {
-                    var school = Szkola("", mutableListOf())
-                    var semestr = Semestr("", mutableListOf())
-                    var schoolName by remember { mutableStateOf(path[0]) }
-                    var semesterName by remember { mutableStateOf("") }
-                    var subjectName by remember { mutableStateOf("") }
-                    if (path.size > 1) {
-                        semesterName = path[1]
-                        if (path.size > 2) {
-                            subjectName = path[2]
-                        }
-                    }
-                    for (sch in listaSzkola) {
-                        if (sch.id == schoolName){
 
-                            school = sch
-                            for (sem in sch.listaSemestr){
-                                if (sem.id == semesterName){
-                                    semestr = sem
-                                }
-                            }
-                        }
-                    }
+
                     AlertDialog(
 
                         onDismissRequest = { showDialog = false },
@@ -595,10 +636,17 @@ fun options(
                                     }
 
                                     Log.d("dodawanie","dodaje do ${school.id} ${school.listaSemestr.size}")
-                                    addData(currentUser, school,null,null, chmura,listaSzkola)
+                                    addData(currentUser,
+                                        school,
+                                        Semestr("", mutableListOf()),
+                                        Subbject("",false, mutableListOf()), chmura,listaSzkola)
                                     for (sem in school.listaSemestr){
                                         Log.d("dodawanie","     dodaje do ${school.id} -${sem.id}")
-                                        addData(currentUser,school,sem,null, chmura,listaSzkola)
+                                        addData(currentUser,
+                                            school,
+                                            sem,
+                                            Subbject("",false, mutableListOf()),
+                                            chmura,listaSzkola)
                                         for (sub in sem.listaSubject){
                                             Log.d("dodawanie","         dodaje do ${school.id} -${sem.id} - ${sub.id}")
                                             addData(currentUser,school,sem,sub,chmura,listaSzkola)
@@ -685,9 +733,11 @@ fun options(
                                         sem.reference.delete()
                                     }
                                 }
+
                             docRef.delete().addOnSuccessListener {
                                 refreshCurrentFragment(navController)
                             }
+                            listaSzkola.remove(school)
                         }
 
                         2 -> {
@@ -700,12 +750,14 @@ fun options(
                             docRef.delete().addOnSuccessListener {
                                 refreshCurrentFragment(navController)
                             }
+                            school.listaSemestr.remove(semestr)
                         }
 
                         3 -> {
                             docRef.delete().addOnSuccessListener {
                                 refreshCurrentFragment(navController)
                             }
+                            semestr.listaSubject.remove(subject)
 
                         }
 

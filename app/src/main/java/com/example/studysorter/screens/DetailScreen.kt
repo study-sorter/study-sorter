@@ -35,10 +35,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -61,7 +63,6 @@ import com.example.studysorter.File
 import com.example.studysorter.SchoolObject
 import com.example.studysorter.Subbject
 import com.google.accompanist.pager.ExperimentalPagerApi
-import com.google.android.gms.tasks.OnSuccessListener
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
@@ -71,6 +72,9 @@ import com.rizzi.bouquet.rememberVerticalPdfReaderState
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import androidx.compose.material.DropdownMenu
+import androidx.compose.material.DropdownMenuItem
+
 
 @OptIn(
     ExperimentalFoundationApi::class, ExperimentalPagerApi::class,
@@ -118,35 +122,38 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
                     GlobalScope.launch {
                         taskSnapshot.storage.downloadUrl.addOnSuccessListener { uri ->
                             imageUrl.value = uri.toString()
-
                         }.await()
                         taskSnapshot.storage.metadata.addOnSuccessListener { metadata ->
                             type.value = metadata.contentType.toString().split("/").last()
-
                         }.await()
-                        Log.d("DetailScreen", "typ: ${type.value} url: ${imageUrl.value}")
+                        Log.d("Sortowanie", "typ: ${type.value} url: ${imageUrl.value}")
                         subjectObject.imageUrls.add(File(imageUrl.value, type.value))
                     }
                     // File uploaded successfully
-
                 }.addOnFailureListener {
                     // Handle failure
                 }
-
             }
         }
 
-    var listaImage = mutableListOf<File>()
-    val listapdf = remember { mutableStateListOf<File>() }
-    for (file in subjectObject.imageUrls) {
-        when (file.type) {
-            "jpeg", "image", "jpg", "webp" -> listaImage.add(file)
-            "pdf" -> listapdf.add(file)
-            else -> Log.d("DetailScreen", "type not recognize: ${file.type}")
-        }
+    var sortOption by remember { mutableStateOf("Alphabetically") }
+
+    // Sorted files
+    val sortedFiles = remember(subjectObject.imageUrls, sortOption) {
+        sortFiles(subjectObject.imageUrls, sortOption)
     }
+
     Column {
         Spacer(modifier = Modifier.height(70.dp))
+
+        TopAppBar(
+            title = { Text("Detail Screen") },
+            actions = {
+                SortMenu(onSortSelected = { selectedSortOption ->
+                    sortOption = selectedSortOption
+                })
+            }
+        )
 
         Box {
             var selectedFile by remember { mutableStateOf(File("", "")) }
@@ -158,29 +165,28 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
                 verticalArrangement = Arrangement.Center,
                 horizontalArrangement = Arrangement.Center
             ) {
-                items(subjectObject.imageUrls) { File ->
-                    Text(text = "zdjęcia$}")
+                items(sortedFiles) { file ->
+                    Text(text = "zdjęcia")
                     Card(
                         modifier = Modifier
                             .size(100.dp)
                             .combinedClickable(
                                 onClick = {
                                     DetailWindow = true
-                                    selectedFile = File
+                                    selectedFile = file
                                 },
                                 onLongClick = {
-                                    selectedFile = File
+                                    selectedFile = file
                                     deleteWindow = true
                                 }
                             )
                     ) {
-                        //wyświetlanie miniatórek
-                        when (File.type) {
+                        // Displaying thumbnails
+                        when (file.type) {
                             "jpeg", "image", "jpg", "webp" -> {
-                                //tu jest wyświetlanie zdjęć
                                 Image(
                                     painter = rememberAsyncImagePainter(
-                                        File.Url,
+                                        file.Url,
                                         placeholder = null
                                     ),
                                     contentScale = ContentScale.Crop,
@@ -192,7 +198,6 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
                             }
 
                             "pdf" -> {
-                                //tu jest wyświetlanie pdfów
                                 Icon(
                                     imageVector = Icons.Default.Description,
                                     contentDescription = "pdf",
@@ -200,32 +205,23 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
-
                         }
-
-
                     }
                 }
-
             }
             if (DetailWindow) {
                 selectedFile.let { file ->
-                    //wyświetlanie powiększonej wersji
-
                     Surface(
                         modifier = Modifier
                             .pointerInput(Unit) {
                                 detectTapGestures { offset: Offset ->
-                                    // Handle click outside of images
                                     selectedFile = File("", "")
                                 }
                             },
                         color = MaterialTheme.colorScheme.background.copy(alpha = 0f),
-
-                        ) {
+                    ) {
                         when (file.type) {
                             "jpeg", "image", "jpg", "webp" -> {
-                                //zdjęcia
                                 var scale by remember { mutableStateOf(1f) }
                                 var offset by remember { mutableStateOf(Offset(0f, 0f)) }
                                 Image(
@@ -238,13 +234,8 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
                                         .fillMaxSize()
                                         .pointerInput(Unit) {
                                             detectTransformGestures { _, pan, zoom, _ ->
-                                                // Update the scale based on zoom gestures.
                                                 scale *= zoom
-
-                                                // Limit the zoom levels within a certain range (optional).
                                                 scale = scale.coerceIn(1f, 3f)
-
-                                                // Update the offset to implement panning when zoomed.
                                                 offset = if (scale == 1f) Offset(
                                                     0f,
                                                     0f
@@ -259,8 +250,6 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
                             }
 
                             "pdf" -> {
-                                //pdfy
-
                                 val pdfState = rememberVerticalPdfReaderState(
                                     resource = ResourceType.Remote(file.Url),
                                     isZoomEnable = true
@@ -272,11 +261,9 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
                                         .fillMaxHeight()
                                 )
                             }
-
                         }
                     }
                 }
-
             }
             if (deleteWindow) {
                 ModalBottomSheet(
@@ -298,19 +285,22 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
                                         val imageRef = firebaseStorage.getReferenceFromUrl(file.Url)
                                         imageRef.delete()
                                             .addOnSuccessListener {
-                                                Log.d("Del","deleted")
-
+                                                Log.d("Del", "deleted")
                                             }
-                                            .addOnFailureListener(){
-                                                Log.d("Del","not deleted")
+                                            .addOnFailureListener {
+                                                Log.d("Del", "not deleted")
                                             }
                                         subjectObject.imageUrls.remove(file)
                                     }
                                 },
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(space = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Icon(imageVector = Icons.Default.Delete, contentDescription = "delete", tint = Color.Red)
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "delete",
+                                tint = Color.Red
+                            )
                             Text("Usuń")
                         }
                     }
@@ -318,9 +308,6 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
             }
         }
     }
-
-
-
 
     Box(modifier = Modifier.fillMaxSize()) {
         FloatingActionButton(
@@ -336,5 +323,51 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
                 tint = Color.White
             )
         }
+    }
+}
+
+@Composable
+fun SortMenu(
+    onSortSelected: (sortOption: String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier) {
+        IconButton(onClick = { expanded = true }) {
+            Icon(Icons.Default.Description, contentDescription = "Sort Options")
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            DropdownMenuItem(onClick = {
+                onSortSelected("Alphabetically")
+                expanded = false
+            }) {
+                Text("Alphabetically")
+            }
+            DropdownMenuItem(onClick = {
+                onSortSelected("Date (Newest First)")
+                expanded = false
+            }) {
+                Text("Date (Newest First)")
+            }
+            DropdownMenuItem(onClick = {
+                onSortSelected("Date (Oldest First)")
+                expanded = false
+            }) {
+                Text("Date (Oldest First)")
+            }
+        }
+    }
+}
+
+fun sortFiles(files: List<File>, sortOption: String): List<File> {
+    return when (sortOption) {
+        "Alphabetically" -> files.sortedBy { it.Url }
+        "Date (Newest First)" -> files.sortedByDescending { it.Url }
+        "Date (Oldest First)" -> files.sortedBy { it.Url }
+        else -> files
     }
 }

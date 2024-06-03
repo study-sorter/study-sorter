@@ -74,6 +74,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
+import androidx.compose.material.CircularProgressIndicator
 
 
 @OptIn(
@@ -89,10 +90,12 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
     val firebaseStorage = FirebaseStorage.getInstance()
     val context = LocalContext.current
     val subjectPath = subjectId!!.replace("-", "/")
+    val uploading = remember { mutableStateOf(false) }
     val subjectStoragePath = subjectPath.split("/")
         .filterIndexed { index, _ -> index in listOf(1, 3, 5) }
         .joinToString(separator = "/")
     val subjectPathList = subjectPath.split("/")
+    val imageFiles = remember { mutableStateListOf<File>() }
     var subjectObject = Subbject("", false, mutableListOf())
     for (school in listaSchool) {
         if (school.id == subjectPathList[1]) {
@@ -117,6 +120,7 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
                 val uploadTask = storageReference.putFile(it)
                 val imageUrl = mutableStateOf("")
                 val type = mutableStateOf("")
+                uploading.value = true
 
                 uploadTask.addOnSuccessListener { taskSnapshot ->
                     GlobalScope.launch {
@@ -130,8 +134,10 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
                         subjectObject.imageUrls.add(File(imageUrl.value, type.value))
                     }
                     // File uploaded successfully
+                    uploading.value = false
                 }.addOnFailureListener {
                     // Handle failure
+                    uploading.value = false
                 }
             }
         }
@@ -305,6 +311,9 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
                         }
                     }
                 }
+            }
+            if (uploading.value) {
+                CircularProgressIndicator()
             }
         }
     }

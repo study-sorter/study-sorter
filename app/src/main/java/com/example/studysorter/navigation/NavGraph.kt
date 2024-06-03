@@ -41,5 +41,6 @@ fun SetUpNavGraph(
             DetailScreen(subjectId, navController)
         }
 
+
     }
 }

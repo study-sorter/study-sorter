@@ -123,18 +123,14 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
                 uploading.value = true
 
                 uploadTask.addOnSuccessListener { taskSnapshot ->
-                    GlobalScope.launch {
-                        taskSnapshot.storage.downloadUrl.addOnSuccessListener { uri ->
-                            imageUrl.value = uri.toString()
-                        }.await()
+                    taskSnapshot.storage.downloadUrl.addOnSuccessListener { uri ->
+                        imageUrl.value = uri.toString()
                         taskSnapshot.storage.metadata.addOnSuccessListener { metadata ->
                             type.value = metadata.contentType.toString().split("/").last()
-                        }.await()
-                        Log.d("Sortowanie", "typ: ${type.value} url: ${imageUrl.value}")
-                        subjectObject.imageUrls.add(File(imageUrl.value, type.value))
+                            subjectObject.imageUrls.add(File(imageUrl.value, type.value))
+                            uploading.value = false
+                        }
                     }
-                    // File uploaded successfully
-                    uploading.value = false
                 }.addOnFailureListener {
                     // Handle failure
                     uploading.value = false
@@ -313,7 +309,14 @@ fun DetailScreen(subjectId: String?, navController: NavController) {
                 }
             }
             if (uploading.value) {
-                CircularProgressIndicator()
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(color = Color.Black.copy(alpha = 0.5f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
         }
     }

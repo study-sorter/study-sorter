@@ -20,6 +20,18 @@ import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.*
+import androidx.compose.material3.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.text.input.*
+import com.example.studysorter.Logowanie
 
 
 @Composable
@@ -82,8 +94,17 @@ fun ProfileScreen() {
             intent.type = "image/*"
             launcher.launch(intent)
         }) {
-            Text("Change Avatar")
+            Text("Zmień avatar")
         }
+        Spacer(modifier = Modifier.height(16.dp))
+        val context = LocalContext.current
+        Button(onClick = {
+            val intent = Intent(context, Logowanie::class.java)
+            context.startActivity(intent)
+        }) {
+            Text("Wyloguj")
+        }
+
     }
 }
 

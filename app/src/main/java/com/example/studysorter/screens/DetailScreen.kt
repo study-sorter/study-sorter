@@ -26,12 +26,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
@@ -43,61 +41,51 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import com.bumptech.glide.RequestBuilder
-import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
-import com.bumptech.glide.integration.compose.GlideImage
-import com.bumptech.glide.integration.compose.rememberGlidePreloadingData
-import com.bumptech.glide.signature.MediaStoreSignature
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
+import com.bumptech.glide.integration.compose.GlideImage
 import com.example.studysorter.File
 import com.example.studysorter.R
 import com.example.studysorter.SchoolObject
 import com.example.studysorter.Subbject
 import com.example.studysorter.navigation.Screens
-import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
-import kotlinx.coroutines.GlobalScope
-
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import androidx.lifecycle.ProcessLifecycleOwner
-import androidx.lifecycle.lifecycleScope
 import com.rizzi.bouquet.ResourceType
 import com.rizzi.bouquet.VerticalPDFReader
 import com.rizzi.bouquet.rememberVerticalPdfReaderState
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlin.math.cos
-import kotlin.math.log
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -295,9 +283,10 @@ fun filesGridScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
                 AsyncImage(
-                    model = if(file.type != "pdf") {
-                        ImageRequest.Builder(context = LocalContext.current).data(file.Url).crossfade(true).build()
-                    }else{
+                    model = if (file.type != "pdf") {
+                        ImageRequest.Builder(context = LocalContext.current).data(file.Url)
+                            .crossfade(true).build()
+                    } else {
                         R.drawable.pdf
                     },
                     error = painterResource(R.drawable.ic_broken_image),
@@ -326,7 +315,7 @@ fun filesGridScreen(
     if (DetailWindow) {
         Log.d("TAG", "filesGridScreen: $ ")
 
-        detailWindow(selectedFile){
+        detailWindow(selectedFile) {
             DetailWindow = false
         }
     }
@@ -401,13 +390,13 @@ private fun deleteWindow(
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
-private fun detailWindow(selectedFile: File,onClose: () -> Unit) {
+private fun detailWindow(selectedFile: File, onClose: () -> Unit) {
     Dialog(
 
         properties = DialogProperties(usePlatformDefaultWidth = false),
-        onDismissRequest = {onClose()}
+        onDismissRequest = { onClose() }
     ) {
-        if(selectedFile.type != "pdf"){
+        if (selectedFile.type != "pdf") {
             Box(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier
@@ -472,7 +461,7 @@ private fun detailWindow(selectedFile: File,onClose: () -> Unit) {
 
             }
 
-        }else{
+        } else {
 
             val pdfState = rememberVerticalPdfReaderState(
                 resource = ResourceType.Remote(selectedFile.Url),
@@ -555,6 +544,6 @@ fun sortFiles(files: List<File>, sortOption: String): List<File> {
 private fun refreshCurrentFragment(navController: NavController, subjectPath: String) {
     val id = "${Screens.Przedmioty.route}/${subjectPath}"
     Log.d("DetailScreen", "refreshCurrentFragment: ${id}")
-    navController.popBackStack(id, false)
+    navController.popBackStack(id, true)
     navController.navigate(id)
 }

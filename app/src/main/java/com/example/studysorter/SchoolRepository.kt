@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
@@ -72,7 +74,6 @@ class SchoolRepository {
                                                     } else {
                                                         emptyList<String>()
                                                     }
-                                                GlobalScope.launch {
                                                     for (Url in listaUrls) {
 
                                                         var type = mutableStateOf("None")
@@ -80,21 +81,23 @@ class SchoolRepository {
                                                         val fileRef =
                                                             storage.getReferenceFromUrl(Url.toString())
                                                         try {
-
-                                                            fileRef.metadata
-                                                                .addOnSuccessListener { metadata ->
-                                                                    type.value =
-                                                                        metadata.contentType.toString()
-                                                                            .split("/").last()
-                                                                }.await()
-                                                            Log.d("Data", type.value)
-                                                            listaFiles.add(
-                                                                File(
-                                                                    Url.toString(),
-                                                                    type.value,
-                                                                    null
+                                                            ProcessLifecycleOwner.get().lifecycleScope.launch {
+                                                                // Fetches data from backend
+                                                                fileRef.metadata
+                                                                    .addOnSuccessListener { metadata ->
+                                                                        type.value =
+                                                                            metadata.contentType.toString()
+                                                                                .split("/").last()
+                                                                    }.await()
+                                                                Log.d("Data", type.value)
+                                                                listaFiles.add(
+                                                                    File(
+                                                                        Url.toString(),
+                                                                        type.value,
+                                                                        null
+                                                                    )
                                                                 )
-                                                            )
+                                                            }
                                                         } catch (e: StorageException) {
                                                             Log.d(
                                                                 "Data",
@@ -114,7 +117,6 @@ class SchoolRepository {
                                                         "Data",
                                                         "downloading imges ends ${listaFiles.size}"
                                                     )
-                                                }
 
                                             }
                                         }.addOnFailureListener { e ->

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,12 +26,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -78,13 +82,20 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.GlobalScope
+
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import com.rizzi.bouquet.ResourceType
+import com.rizzi.bouquet.VerticalPDFReader
+import com.rizzi.bouquet.rememberVerticalPdfReaderState
 import kotlin.math.cos
 import kotlin.math.log
 import kotlin.math.roundToInt
@@ -92,7 +103,6 @@ import kotlin.math.sin
 
 
 @OptIn(
-    ExperimentalFoundationApi::class, ExperimentalPagerApi::class,
     ExperimentalMaterial3Api::class
 )
 @Composable
@@ -138,15 +148,13 @@ fun DetailScreen(subjectId: String?, navController: NavController, innerPadding:
                 uploading.value = true
 
                 uploadTask.addOnSuccessListener { taskSnapshot ->
-                    GlobalScope.launch {
+                    ProcessLifecycleOwner.get().lifecycleScope.launch {
                         taskSnapshot.storage.downloadUrl.addOnSuccessListener { uri ->
                             imageUrl.value = uri.toString()
-
                         }.await()
                         taskSnapshot.storage.metadata.addOnSuccessListener { metadata ->
                             type.value = metadata.contentType.toString().split("/").last()
                         }.await()
-                        Log.d("Sortowanie", "typ: ${type.value} url: ${imageUrl.value}")
                         subjectRef.update("files", FieldValue.arrayUnion(imageUrl.value))
                         subjectObject.imageUrls.add(File(imageUrl.value, type.value, null))
                         refreshCurrentFragment(navController, subjectId)
@@ -287,9 +295,15 @@ fun filesGridScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
                 AsyncImage(
-                    model = ImageRequest.Builder(context = LocalContext.current).data(file.Url)
-                        .crossfade(true).build(),
+                    model = if(file.type != "pdf") {
+                        ImageRequest.Builder(context = LocalContext.current).data(file.Url).crossfade(true).build()
+                    }else{
+                        R.drawable.pdf
+                    },
                     error = painterResource(R.drawable.ic_broken_image),
+                    onError = { e ->
+                        Log.d("TAG", "filesGridScreen: ${e.result} ")
+                    },
                     placeholder = painterResource(R.drawable.loading_img),
                     contentDescription = "Obraz",
                     contentScale = ContentScale.Crop,
@@ -393,71 +407,102 @@ private fun detailWindow(selectedFile: File,onClose: () -> Unit) {
         properties = DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = {onClose()}
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onTap = {
-                                onClose()
-                            }
-                        )
-                    }
-            ) {
-
-                val angle by remember { mutableStateOf(0f) }
-                var zoom by remember { mutableStateOf(1f) }
-                var offsetX by remember { mutableStateOf(0f) }
-                var offsetY by remember { mutableStateOf(0f) }
-
-                val configuration = LocalConfiguration.current
-                val screenWidth = configuration.screenWidthDp.dp.value
-                val screenHeight = configuration.screenHeightDp.dp.value
-
-                GlideImage(
-                    model = selectedFile.Url,
-                    contentDescription = "fullscreen",
-                    contentScale = ContentScale.Fit,
+        if(selectedFile.type != "pdf"){
+            Box(modifier = Modifier.fillMaxSize()) {
+                Box(
                     modifier = Modifier
-                        .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
-                        .graphicsLayer(
-                            scaleX = zoom,
-                            scaleY = zoom,
-                            rotationZ = angle
-                        )
+                        .fillMaxSize()
                         .pointerInput(Unit) {
-                            detectTransformGestures(
-                                onGesture = { _, pan, gestureZoom, _ ->
-                                    zoom = (zoom * gestureZoom).coerceIn(1F..4F)
-//                                Log.d("TAG", "detailWindow:$pan ${pan.x} ${pan.y}")
-//                                Log.d("TAG", "detailWindow:$offsetX $offsetY ")
-                                    if (zoom > 1) {
-                                        val x = (pan.x * zoom)
-                                        val y = (pan.y * zoom)
-                                        val angleRad = angle * 3.14 / 180.0
-                                        offsetX =
-                                            (offsetX + (x * cos(angleRad) - y * sin(angleRad)).toFloat()).coerceIn(
-                                                -(screenWidth * zoom)..(screenWidth * zoom)
-                                            )
-                                        offsetY =
-                                            (offsetY + (x * sin(angleRad) + y * cos(angleRad)).toFloat()).coerceIn(
-                                                -(screenHeight * zoom)..(screenHeight * zoom)
-                                            )
-                                    } else {
-                                        offsetX = 0F
-                                        offsetY = 0F
-                                    }
+                            detectTapGestures(
+                                onTap = {
+                                    onClose()
                                 }
                             )
                         }
-                        .fillMaxSize()
-                )
+                ) {
+
+                    val angle by remember { mutableStateOf(0f) }
+                    var zoom by remember { mutableStateOf(1f) }
+                    var offsetX by remember { mutableStateOf(0f) }
+                    var offsetY by remember { mutableStateOf(0f) }
+
+                    val configuration = LocalConfiguration.current
+                    val screenWidth = configuration.screenWidthDp.dp.value
+                    val screenHeight = configuration.screenHeightDp.dp.value
+
+                    GlideImage(
+                        model = selectedFile.Url,
+                        contentDescription = "fullscreen",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
+                            .graphicsLayer(
+                                scaleX = zoom,
+                                scaleY = zoom,
+                                rotationZ = angle
+                            )
+                            .pointerInput(Unit) {
+                                detectTransformGestures(
+                                    onGesture = { _, pan, gestureZoom, _ ->
+                                        zoom = (zoom * gestureZoom).coerceIn(1F..4F)
+//                                Log.d("TAG", "detailWindow:$pan ${pan.x} ${pan.y}")
+//                                Log.d("TAG", "detailWindow:$offsetX $offsetY ")
+                                        if (zoom > 1) {
+                                            val x = (pan.x * zoom)
+                                            val y = (pan.y * zoom)
+                                            val angleRad = angle * 3.14 / 180.0
+                                            offsetX =
+                                                (offsetX + (x * cos(angleRad) - y * sin(angleRad)).toFloat()).coerceIn(
+                                                    -(screenWidth * zoom)..(screenWidth * zoom)
+                                                )
+                                            offsetY =
+                                                (offsetY + (x * sin(angleRad) + y * cos(angleRad)).toFloat()).coerceIn(
+                                                    -(screenHeight * zoom)..(screenHeight * zoom)
+                                                )
+                                        } else {
+                                            offsetX = 0F
+                                            offsetY = 0F
+                                        }
+                                    }
+                                )
+                            }
+                            .fillMaxSize()
+                    )
+                }
+
             }
 
+        }else{
+
+            val pdfState = rememberVerticalPdfReaderState(
+                resource = ResourceType.Remote(selectedFile.Url),
+                isZoomEnable = true
+            )
+
+            VerticalPDFReader(
+                state = pdfState,
+                modifier = Modifier
+                    .background(color = Color.Transparent)
+                    .fillMaxHeight()
+            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                FloatingActionButton(
+                    onClick = { onClose() },
+                    modifier = Modifier
+                        .padding(end = 7.dp)
+                        .align(Alignment.TopEnd),
+                    containerColor = Color.Black,
+
+                    ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = "zamknij",
+                        tint = Color.Red
+                    )
+                }
+            }
         }
     }
-
 
 }
 

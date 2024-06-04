@@ -56,6 +56,7 @@ import com.example.studysorter.navigation.Screens
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 
 
 @Composable
@@ -490,8 +491,8 @@ fun options(
         val mycontext = LocalContext.current
         val currentUser = FirebaseAuth.getInstance().currentUser
         val chmura = FirebaseFirestore.getInstance()
-        val userDoc =
-            chmura.collection("users").document(FirebaseAuth.getInstance().currentUser!!.uid)
+        val storage = FirebaseStorage.getInstance()
+        val userDoc = chmura.collection("users").document(FirebaseAuth.getInstance().currentUser!!.uid)
         var showDialog by remember { mutableStateOf(false) }
         var school = Szkola("", mutableListOf())
         var semestr = Semestr("", mutableListOf())
@@ -529,26 +530,26 @@ fun options(
 
             else -> userDoc
         }
-
-        ModalBottomSheet(
-            onDismissRequest = {
-                showBottomSheet = false
-            },
-            sheetState = rememberModalBottomSheetState(true)
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.padding(start = 20.dp, bottom = 50.dp)
+        if (currentUser != null){
+            ModalBottomSheet(
+                onDismissRequest = {
+                    showBottomSheet = false
+                },
+                sheetState = rememberModalBottomSheetState(true)
             ) {
-                if (path.size == 3){
-                    Option(Icons.Default.Edit, "Edytuj") {
-                        showDialog = true
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.padding(start = 20.dp, bottom = 50.dp)
+                ) {
+                    if (path.size == 3){
+                        Option(Icons.Default.Edit, "Edytuj") {
+                            showDialog = true
+                        }
                     }
-                }
-                if (showDialog) {
+                    if (showDialog) {
 
 
-                    AlertDialog(
+                        AlertDialog(
 
                         onDismissRequest = { showDialog = false },
                         title = { Text("Edytuj nazwę szkoły lub kierunku") },
@@ -622,7 +623,7 @@ fun options(
                                         }
                                     }
 
-                                }
+                                    }
 
                             }
                         },
@@ -700,67 +701,87 @@ fun options(
                     )
                 }
 
-                if (path.size == 3) {
-                    val value = subject!!.ulubione
-                    val icon: ImageVector
-                    icon = if (value) {
-                        Icons.Default.Favorite
-                    } else {
-                        Icons.Default.FavoriteBorder
-                    }
-                    Option(icon, "Dodaj do Ulubionych") {
-                        chmura.runTransaction { transaction ->
-                            transaction.update(docRef, "ulubione", !value)
+                    if (path.size == 3) {
+                        val value = subject!!.ulubione
+                        val icon: ImageVector
+                        icon = if (value) {
+                            Icons.Default.Favorite
+                        } else {
+                            Icons.Default.FavoriteBorder
                         }
-                        SchoolObject.DownloadData()
-                        refreshCurrentFragment(navController)
+                        Option(icon, "Dodaj do Ulubionych") {
+                            chmura.runTransaction { transaction ->
+                                transaction.update(docRef, "ulubione", !value)
+                            }
+                            SchoolObject.DownloadData()
+                            refreshCurrentFragment(navController)
+                        }
                     }
-                }
-                Option(icon = Icons.Default.Delete, text = "Usuń") {
-                    when (path.size) {
-                        1 -> {
-                            docRef.collection("semestry").get()
-                                .addOnSuccessListener { SemSnapshot ->
-                                    for (sem in SemSnapshot.documents) {
-                                        sem.reference.collection("przedmioty").get()
-                                            .addOnSuccessListener { subSnapshot ->
-                                                for (subject in subSnapshot.documents) {
-                                                    subject.reference.delete()
+                    Option(icon = Icons.Default.Delete, text = "Usuń") {
+                        when (path.size) {
+                            1 -> {
+                                docRef.collection("semestry").get()
+                                    .addOnSuccessListener { SemSnapshot ->
+                                        for (sem in SemSnapshot.documents) {
+                                            sem.reference.collection("przedmioty").get()
+                                                .addOnSuccessListener { subSnapshot ->
+                                                    for (subject in subSnapshot.documents) {
+                                                        subject.reference.delete()
+
+                                                    }
                                                 }
-                                            }
-                                        sem.reference.delete()
+                                            sem.reference.delete()
+                                        }
+                                    }
+
+                                docRef.delete().addOnSuccessListener {
+                                }
+                                for (sem in school.listaSemestr){
+                                    for (sub in sem.listaSubject){
+                                        for (file in sub.imageUrls){
+                                            storage.getReferenceFromUrl(file.Url).delete()
+                                        }
                                     }
                                 }
-
-                            docRef.delete().addOnSuccessListener {
-                                refreshCurrentFragment(navController)
+                                listaSzkola.remove(school)
                             }
-                            listaSzkola.remove(school)
-                        }
 
-                        2 -> {
-                            docRef.collection("przedmioty").get()
-                                .addOnSuccessListener { subSnapshot ->
-                                    for (subject in subSnapshot.documents) {
-                                        subject.reference.delete()
+                            2 -> {
+                                docRef.collection("przedmioty").get()
+                                    .addOnSuccessListener { subSnapshot ->
+                                        for (subject in subSnapshot.documents) {
+                                            subject.reference.delete()
+                                        }
+                                    }
+                                docRef.delete().addOnSuccessListener {
+                                }
+                                for (sub in semestr.listaSubject){
+                                    for (file in sub.imageUrls){
+                                        storage.getReferenceFromUrl(file.Url).delete()
                                     }
                                 }
-                            docRef.delete().addOnSuccessListener {
-                                refreshCurrentFragment(navController)
+                                school.listaSemestr.remove(semestr)
                             }
-                            school.listaSemestr.remove(semestr)
-                        }
 
-                        3 -> {
-                            docRef.delete().addOnSuccessListener {
-                                refreshCurrentFragment(navController)
+                            3 -> {
+                                docRef.delete().addOnSuccessListener {
+                                }
+                                    storage.reference.child("users/${currentUser.uid}/${path[0]}/${path[1]}/${path[2]}")
+                                        .listAll().addOnSuccessListener { result ->
+                                }
+                                for (file in subject!!.imageUrls){
+                                    storage.getReferenceFromUrl(file.Url).delete()
+                                }
+                                semestr.listaSubject.remove(subject)
+
                             }
-                            semestr.listaSubject.remove(subject)
 
                         }
+                        refreshCurrentFragment(navController)
 
                     }
                 }
+
             }
 
         }

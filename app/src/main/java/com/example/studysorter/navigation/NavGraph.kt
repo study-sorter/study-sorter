@@ -38,7 +38,7 @@ fun SetUpNavGraph(
             arguments = listOf(navArgument("subjectId") { type = NavType.StringType })
         ) { backStackEntry ->
             val subjectId = backStackEntry.arguments?.getString("subjectId")
-            DetailScreen(subjectId, navController)
+            DetailScreen(subjectId, navController,innerPadding)
         }
 
 

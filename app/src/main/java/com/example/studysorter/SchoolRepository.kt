@@ -3,10 +3,11 @@ package com.example.studysorter
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import com.google.firebase.Firebase
+import androidx.compose.ui.graphics.painter.Painter
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.storage.storage
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageException
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -19,7 +20,7 @@ data class Subbject(
     var imageUrls: MutableList<File>
 ) //jest Subbject bo koliduje z jakąś gotow klasą
 
-data class File(var Url: String, var type: String?)
+data class File(var Url: String, var type: String?, var painter: Painter?)
 class SchoolRepository {
     private var listaSzkola: MutableList<Szkola> = mutableListOf()
 
@@ -39,6 +40,7 @@ class SchoolRepository {
     fun DownloadData() {
         Log.d("Data", "Downloading Data")
         val chmura = FirebaseFirestore.getInstance()
+        val storage = FirebaseStorage.getInstance()
         val currentUser = FirebaseAuth.getInstance().currentUser
         listaSzkola.clear()
         if (currentUser != null) {
@@ -56,83 +58,63 @@ class SchoolRepository {
                             .get().addOnSuccessListener { semestrSnapshot ->
                                 Log.d("Data", "semesterSnapshot size: ${semestrSnapshot.size()}")
                                 for (semestr in semestrSnapshot) {
-
                                     var listaSubject = mutableListOf<Subbject>()
 
                                     semestr.reference
                                         .collection("przedmioty")
                                         .get().addOnSuccessListener { subjectSnapshot ->
                                             for (subject in subjectSnapshot) {
-
-                                                Log.d("Data", "downloading imges starts")
-                                                /*val listaUrls = if (subject.data.contains("imageUrls")) {
-                                                    subject.data["imageUrls"] as List<String>
-                                                } else {
-                                                    emptyList()
-                                                }*/
-                                                /*val listaFiles = mutableListOf<File>()
-                                                var type = "None"
-                                                for (Url in listaUrls){
-                                                    type  = URLConnection.guessContentTypeFromName(Url).toString()
-                                                    listaFiles.add(File(Url,type))
-                                                }*/
                                                 val listaFiles = mutableStateListOf<File>()
-                                                Firebase.storage.reference.child("users/${currentUser.uid}/${school.id}/${semestr.id}/${subject.id}")
-                                                    .listAll().addOnSuccessListener { result ->
-                                                    result.items.forEach { item ->
-                                                        // Get metadata for each file
-                                                        GlobalScope.launch {
 
-                                                            var type = mutableStateOf("None")
-                                                            var url = mutableStateOf("None")
+                                                val listaUrls =
+                                                    if (subject.data.contains("files")) {
+                                                        subject.data["files"] as List<*>
+                                                    } else {
+                                                        emptyList<String>()
+                                                    }
+                                                GlobalScope.launch {
+                                                    for (Url in listaUrls) {
 
-                                                            item.metadata
+                                                        var type = mutableStateOf("None")
+                                                        var painter: Painter
+                                                        val fileRef =
+                                                            storage.getReferenceFromUrl(Url.toString())
+                                                        try {
+
+                                                            fileRef.metadata
                                                                 .addOnSuccessListener { metadata ->
                                                                     type.value =
                                                                         metadata.contentType.toString()
                                                                             .split("/").last()
-                                                                }
-                                                                .addOnFailureListener { exception ->
-                                                                    // Handle any errors that occur during metadata retrieval
-                                                                    Log.e(
-                                                                        "Data",
-                                                                        "Error getting metadata for ${item.name}: $exception"
-                                                                    )
                                                                 }.await()
-
-                                                            item.downloadUrl
-                                                                .addOnSuccessListener { uri ->
-                                                                    url.value = uri.toString()
-                                                                }
-                                                                .addOnFailureListener { exception ->
-                                                                    Log.e(
-                                                                        "Data",
-                                                                        "Error getting download URL for ${item.name}: $exception"
-                                                                    )
-                                                                }.await()
-
-                                                            Log.d("type", "typ ${type.value}")
-
-
+                                                            Log.d("Data", type.value)
                                                             listaFiles.add(
                                                                 File(
-                                                                    url.value,
-                                                                    type.value
+                                                                    Url.toString(),
+                                                                    type.value,
+                                                                    null
                                                                 )
                                                             )
+                                                        } catch (e: StorageException) {
+                                                            Log.d(
+                                                                "Data",
+                                                                "DownloadData: nie udało się pobrać zdjęcia ${e.message} ${e.errorCode} "
+                                                            )
                                                         }
-
                                                     }
-                                                }
-                                                listaSubject.add(
-                                                    Subbject(
-                                                        subject.id,
-                                                        subject.data["ulubione"] as Boolean,
-                                                        listaFiles
+                                                    listaSubject.add(
+                                                        Subbject(
+                                                            subject.id,
+                                                            subject.data["ulubione"] as Boolean,
+                                                            listaFiles
+                                                        )
                                                     )
-                                                )
 
-                                                Log.d("Data", "downloading imges ends")
+                                                    Log.d(
+                                                        "Data",
+                                                        "downloading imges ends ${listaFiles.size}"
+                                                    )
+                                                }
 
                                             }
                                         }.addOnFailureListener { e ->

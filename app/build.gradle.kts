@@ -114,13 +114,12 @@ dependencies {
     implementation ("androidx.compose.material:material:1.0.5'")
     implementation ("androidx.compose.ui:ui-tooling:1.0.5")
 
-
+    implementation ("com.github.bumptech.glide:compose:1.0.0-beta01")
 
 
     implementation ("io.github.grizzi91:bouquet:1.1.2")
 
     implementation ("com.google.accompanist:accompanist-pager:0.28.0")
-
 
 
 

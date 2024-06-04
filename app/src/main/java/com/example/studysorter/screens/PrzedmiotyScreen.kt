@@ -72,7 +72,7 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
 //    val listaSzkola: List<Szkola> by pobierzSzkoly().collectAsState(initial = emptyList())
     var listaSzkola: MutableList<Szkola> = SchoolObject.getData()
 
-
+    Log.d("test","1")
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
@@ -180,6 +180,7 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
             }
         )
     }
+    Log.d("test","2")
 
     //wyswietlanie danych
     LazyColumn(
@@ -192,6 +193,7 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
             ExpandableSchoolItem(school, navController)
         }
     }
+    Log.d("test","3")
 
     Box(modifier = Modifier.fillMaxSize()) {
         FloatingActionButton(
@@ -204,6 +206,7 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
             Text("+")
         }
     }
+    Log.d("test","4")
 
 }
 //przepisałem do funkcji dodawanie danych do firebase dla czytelności
@@ -277,13 +280,13 @@ private fun addData(
             if (subject != null && subject.id != "") {
                 val subjectMap = hashMapOf(
                     "name" to subject.id,
-                    "ulubione" to subject.ulubione
+                    "ulubione" to subject.ulubione,
+                    "files" to subject.imageUrls
                 )
                 val dodawanaSubject = dodawanaSemestr.collection("przedmioty").document(subject.id)
                 chmura.runTransaction { transaction ->
                     //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
                     if (!transaction.get(dodawanaSubject).exists()) {
-
                         transaction.set(dodawanaSubject, subjectMap)
                     }
                 }
@@ -718,11 +721,6 @@ fun options(
                         1 -> {
                             docRef.collection("semestry").get()
                                 .addOnSuccessListener { SemSnapshot ->
-                                    Toast.makeText(
-                                        mycontext,
-                                        SemSnapshot.size().toString(),
-                                        Toast.LENGTH_SHORT
-                                    ).show()
                                     for (sem in SemSnapshot.documents) {
                                         sem.reference.collection("przedmioty").get()
                                             .addOnSuccessListener { subSnapshot ->
@@ -790,124 +788,3 @@ private fun refreshCurrentFragment(navController: NavController){
     navController.popBackStack(id!!,true)
     navController.navigate(id)
 }
-/* tu są funkcje dla testowania
-@Preview(showBackground = true)
-@Composable
-fun PreviewlistaSzkol() {
-
-    val listaP = listOf(
-        Subbject("przedmiot1),"),
-        Subbject("Bob"),
-        Subbject("Charlie")
-    )
-    val listaSe = listOf(
-        Semestr("sem1,", emptyList()),
-        Semestr("sem2", emptyList()),
-        Semestr("sem3",listaP)
-    )
-    val listaSZ = listOf(
-        Szkola("szkola",listaSe),
-        Szkola("technikum)", emptyList()),
-        Szkola("Charlie", emptyList())
-    )
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(1f),
-    ) {
-        items(listaSZ){school->
-            ExpandableSchoolItem(school)
-        }
-    }
-
-}
-@Preview
-@Composable
-fun Previewdodawanie() {
-    val listaP = listOf(
-        Subbject("przedmiot1),"),
-        Subbject("Bob"),
-        Subbject("Charlie")
-    )
-    val listaSe = listOf(
-        Semestr("sem1,", emptyList()),
-        Semestr("sem2", emptyList()),
-        Semestr("sem3",listaP)
-    )
-    val listaSZ = listOf(
-        Szkola("szkola",listaSe),
-        Szkola("technikum)", emptyList()),
-        Szkola("Charlie", emptyList())
-    )
-    var showDialog by remember { mutableStateOf(true) }
-    var schoolName by remember { mutableStateOf("") }
-    var semesterName by remember { mutableStateOf("") }
-    var subjectName by remember { mutableStateOf("") }
-    if (showDialog){
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            title = { Text("Dodaj nazwę szkoły lub kierunku") },
-            text = {
-
-                Column {
-
-                    var focusSchool by remember { mutableStateOf(false)}
-                    OutlinedTextField(
-                        value = schoolName,
-                        onValueChange = { schoolName = it },
-                        modifier = Modifier
-                            .onFocusChanged { focusSchool = it.isFocused },
-                        label = { Text("Nazwa szkoły lub kierunku") } ,
-                    )
-                    if (focusSchool){
-                        Box {
-                            LazyColumn(modifier = Modifier.padding(start = 10.dp)) {
-                                items(listaSZ) { school ->
-                                    HorizontalDivider(color = Color.Gray)
-                                    Text(
-                                        text = school.id,
-                                        modifier = Modifier.clickable {schoolName = school.id}.padding(8.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    OutlinedTextField(
-                        value = semesterName,
-                        onValueChange = { semesterName = it },
-                        label = { Text("Nazwa lub numer semestru") }
-                    )
-
-                    OutlinedTextField(
-                        value = subjectName,
-                        onValueChange = { subjectName = it },
-                        label = { Text("Nazwa Przedmiotu") }
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-
-                    showDialog = false
-                }) {
-                    Text("Potwierdź")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDialog = false }) {
-                    Text("Anuluj")
-                }
-            }
-        )
-    }
-        Column(modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Green)) {
-            Text(text = "szkola $schoolName",style = MaterialTheme.typography.headlineSmall)
-            Text(text = "semestr $semesterName",style = MaterialTheme.typography.headlineSmall)
-            Text(text = "przedmiot $subjectName",style = MaterialTheme.typography.headlineSmall)
-            Button(onClick = { showDialog = !showDialog}) {
-                Text(text = "pokaz")
-            }
-        }
-}
-
- */

@@ -46,7 +46,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -95,20 +94,16 @@ import kotlin.math.sin
 )
 @Composable
 fun DetailScreen(subjectId: String?, navController: NavController, innerPadding: PaddingValues) {
+    val TAG = "DetailScreen"
     var listaSchool = SchoolObject.getData()
     val firebaseAuth = FirebaseAuth.getInstance()
     val userId = firebaseAuth.currentUser?.uid
     val chmura = FirebaseFirestore.getInstance()
     val firebaseStorage = FirebaseStorage.getInstance()
-    val context = LocalContext.current
     val subjectPath = subjectId!!.replace("-", "/")
     val uploading = remember { mutableStateOf(false) }
-    val subjectStoragePath = subjectPath.split("/")
-        .filterIndexed { index, _ -> index in listOf(1, 3, 5) }
-        .joinToString(separator = "/")
     val subjectPathList = subjectPath.split("/")
     val subjectRef = chmura.document("users/$userId/$subjectPath")
-    val imageFiles = remember { mutableStateListOf<File>() }
     var subjectObject = Subbject("", false, mutableListOf())
     for (school in listaSchool) {
         if (school.id == subjectPathList[1]) {
@@ -128,7 +123,12 @@ fun DetailScreen(subjectId: String?, navController: NavController, innerPadding:
             // Handle the returned Uri
             uri?.let {
                 val fileName = it.lastPathSegment
-                val path = "users/$userId/$subjectStoragePath/$fileName"
+                var path = "users/$userId/$fileName"
+                if (firebaseStorage.reference.child(path).bucket.isNotEmpty()) {
+                    path += (0..100).random().toString()
+                } else {
+                    Log.d(TAG, "DetailScreen: ")
+                }
                 val storageReference = firebaseStorage.reference.child(path)
                 val uploadTask = storageReference.putFile(it)
                 val imageUrl = mutableStateOf("")
@@ -492,7 +492,6 @@ fun sortFiles(files: List<File>, sortOption: String): List<File> {
 
 private fun refreshCurrentFragment(navController: NavController, subjectPath: String) {
     val id = "${Screens.Przedmioty.route}/${subjectPath}"
-    Log.d("DetailScreen", "refreshCurrentFragment: ${id}")
     navController.popBackStack(id, true)
     navController.navigate(id)
 }

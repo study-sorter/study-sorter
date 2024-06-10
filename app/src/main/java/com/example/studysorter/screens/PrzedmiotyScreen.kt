@@ -65,7 +65,6 @@ import kotlinx.coroutines.tasks.await
 
 @Composable
 fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) {
-    val mycontext = LocalContext.current
 
     val chmura = FirebaseFirestore.getInstance()
     val currentUser = FirebaseAuth.getInstance().currentUser
@@ -882,8 +881,16 @@ fun edit(
                 }
             }.await()
             for (sem in school.listaSemestr) {
-                EditSemester(sem, szkolyFolder, schoolName, sem.id, chmura, mutableListOf(path[0],sem.id))
+                EditSemester(
+                    sem,
+                    szkolyFolder,
+                    schoolName,
+                    sem.id,
+                    chmura,
+                    mutableListOf(path[0], sem.id)
+                )
             }
+            listaSzkola.sortBy { it.id }
         }
         if (path.size == 2) {
             if (school.id != schoolName || semestr.id != semesterName) {

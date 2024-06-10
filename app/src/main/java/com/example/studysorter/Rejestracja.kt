@@ -199,36 +199,7 @@ private fun zarejestru() {
                 }
             )
         }
-        /*stare można wyrzucić jest tu imie i nazwisko*/Row(verticalAlignment = Alignment.CenterVertically) {
-            /*
-            Box {
-                OutlinedTextField(
-                    value = imie,
-                    onValueChange = { imie = it },
-                    modifier = Modifier.padding(top = 15.dp).width(OutlinedTextFieldDefaults.MinWidth/2),
-                    singleLine = true,
-                    placeholder = { Text(text = "imie") },
-                    colors = TextFieldDefaults.colors(
-                        unfocusedContainerColor = colorResource(id = R.color.tlo_polaTekstowe),
-                        focusedContainerColor = colorResource(id = R.color.tlo_polaTekstowe),
-                    ),
-                )
-            }
-            Box {
-                OutlinedTextField(
-                    value = nazwisko,
-                    onValueChange = { nazwisko = it },
-                    modifier = Modifier.padding(top = 15.dp).width(OutlinedTextFieldDefaults.MinWidth/2),
-                    singleLine = true,
-                    placeholder = { Text(text = "nazwisko") },
-                    colors = TextFieldDefaults.colors(
-                        unfocusedContainerColor = colorResource(id = R.color.tlo_polaTekstowe),
-                        focusedContainerColor = colorResource(id = R.color.tlo_polaTekstowe),
-                    ),
-                )
-            }
-             */
-        }
+        
         /*przycisk potwierdziający*/Button(
             onClick = {
                 //warunki sprawdzane przed rejestracją
@@ -247,7 +218,6 @@ private fun zarejestru() {
                     Toast.makeText(mycontext, "hasło jest za krótkie powinno mieć co najmniej 6 znaków ", Toast.LENGTH_SHORT).show()
                 }
 
-                //sprawdzanie czy pola są wypełnione dobrze zakładając warunki sprawdzane wcześniej
                 if(
                     isNicknameCorrect.value
                     && isMailCorrect.value
@@ -258,18 +228,6 @@ private fun zarejestru() {
                             .addOnSuccessListener {
                                 val currentUser = Firebase.auth.currentUser
                                 currentUser?.let {
-                                    val name = currentUser.displayName
-                                    val email = currentUser.email
-                                    val photoUrl = currentUser.photoUrl
-                                    val emailVerified = currentUser.isEmailVerified
-                                    val uid = currentUser.uid
-
-                                    // Create a new user object
-                                    val nowy: User = User(
-                                        currentUser.email.toString(),
-                                        currentUser.uid,
-                                        Nickname
-                                    )
 
                                     // Save the user to Firestore
                                     val userMap = hashMapOf(

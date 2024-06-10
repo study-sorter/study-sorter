@@ -181,57 +181,6 @@ fun DetailScreen(subjectId: String?, navController: NavController, innerPadding:
             navController = navController,
             subjectPath = subjectId
         )
-        /*LazyVerticalGrid(
-            columns = GridCells.Adaptive(85.dp),
-            contentPadding = PaddingValues(8.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            items(sortedFiles) { file ->
-                Text(text = "zdjęcia")
-                Card(
-                    modifier = Modifier
-                        .size(100.dp)
-                        .combinedClickable(
-                            onClick = {
-                                DetailWindow = true
-                                selectedFile = file
-                            },
-                            onLongClick = {
-                                selectedFile = file
-                                deleteWindow = true
-                            }
-                        )
-                ) {
-                    // Displaying thumbnails
-                    when (file.type) {
-                        "jpeg", "image", "jpg", "webp" -> {
-                            Image(
-                                painter = rememberAsyncImagePainter(
-                                    file.Url,
-                                    placeholder = null
-                                ),
-                                contentScale = ContentScale.Crop,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .wrapContentHeight(),
-                            )
-                        }
-
-                        "pdf" -> {
-                            Icon(
-                                imageVector = Icons.Default.Description,
-                                contentDescription = "pdf",
-                                tint = Color.Red,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                    }
-                }
-            }
-        }*/
-
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

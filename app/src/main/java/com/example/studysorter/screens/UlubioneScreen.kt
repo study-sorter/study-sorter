@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.studysorter.SchoolObject
 import com.example.studysorter.Subbject
+import com.example.studysorter.Szkola
 import com.example.studysorter.navigation.Screens
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -42,7 +43,7 @@ fun UlubioneScreen(navController: NavController, innerPadding: PaddingValues) {
             for (sem in school.listaSemestr){
                 for (sub in sem.listaSubject){
                     if (sub.ulubione){
-                        SubjectItem(subject = sub, navController = navController, pathSem = mutableListOf(school.id,sem.id))
+                        SubjectItem(subject = sub, navController = navController, pathSem = mutableListOf(school.id,sem.id),school = school)
                     }
                 }
             }
@@ -53,7 +54,7 @@ fun UlubioneScreen(navController: NavController, innerPadding: PaddingValues) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun SubjectItem(subject: Subbject, navController: NavController, pathSem: MutableList<String>) {
+private fun SubjectItem(subject: Subbject, navController: NavController, pathSem: MutableList<String>,school:Szkola) {
     var more_options by remember { mutableStateOf(false) }
     val pathSub = mutableListOf(pathSem[0],pathSem[1],subject.id)
     val subjectPath = "szkoly-${pathSub[0]}-semestry-${pathSub[1]}-przedmioty-${pathSub[2]}"
@@ -81,6 +82,6 @@ private fun SubjectItem(subject: Subbject, navController: NavController, pathSem
         }
     }
     if (more_options){
-        more_options = options(pathSub,navController,subject)
+        more_options = options(pathSub, navController, subject, school)
     }
 }

@@ -50,14 +50,6 @@ class Logowanie : AppCompatActivity() {
                 }
 
         }
-// tymczasowe można usunąć komentarze yyy nie wiem czy to zadziała na razie nie ruszać XD
-//        FirebaseAuth.getInstance().currentUser?.let { auth -> //jeśli null to się nie wykona
-//            intent = Intent(this, MainActivity::class.java).apply {
-//                flags = (Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)//wyczyszczenie tej aktywności czyli że nie można się tu cofnąć
-//            }
-//            startActivity(intent)
-//        }
-
     }
 }
 

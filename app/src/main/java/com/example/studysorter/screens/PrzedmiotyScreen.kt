@@ -1,7 +1,6 @@
 package com.example.studysorter.screens
 
 import android.util.Log
-import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -47,6 +46,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import com.example.studysorter.SchoolObject
 import com.example.studysorter.Semestr
@@ -55,8 +56,11 @@ import com.example.studysorter.Szkola
 import com.example.studysorter.navigation.Screens
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 
 @Composable
@@ -73,7 +77,7 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
 //    val listaSzkola: List<Szkola> by pobierzSzkoly().collectAsState(initial = emptyList())
     var listaSzkola: MutableList<Szkola> = SchoolObject.getData()
 
-    Log.d("test","1")
+    Log.d("test", "1")
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
@@ -181,7 +185,7 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
             }
         )
     }
-    Log.d("test","2")
+    Log.d("test", "2")
 
     //wyswietlanie danych
     LazyColumn(
@@ -194,7 +198,7 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
             ExpandableSchoolItem(school, navController)
         }
     }
-    Log.d("test","3")
+    Log.d("test", "3")
 
     Box(modifier = Modifier.fillMaxSize()) {
         FloatingActionButton(
@@ -207,7 +211,7 @@ fun PrzedmiotyScreen(navController: NavController, innerPadding: PaddingValues) 
             Text("+")
         }
     }
-    Log.d("test","4")
+    Log.d("test", "4")
 
 }
 //przepisałem do funkcji dodawanie danych do firebase dla czytelności
@@ -227,7 +231,7 @@ private fun addData(
 
     // w razie jakby było mięcej eleentów niż nazwa lepiej to przenieść do Onclick i do parametru podać tylko hashMap (tak mi się wydaje)
     if (school.id.isNotEmpty()) {
-        Log.wtf("test","dodawanie szkoly rozpoczęte")
+        Log.wtf("test", "dodawanie szkoly rozpoczęte")
 
         val schoolMap = hashMapOf("name" to school.id)
         val dodawanaSzkola = chmura.document("users/${currentUser.uid}/szkoly/${school.id}")
@@ -238,19 +242,17 @@ private fun addData(
             }
         }
         found = false
-        for (sch in listaSzkola){
-            if (sch.id == _school.id){
+        for (sch in listaSzkola) {
+            if (sch.id == _school.id) {
                 _school = sch
                 found = true
                 break
             }
         }
-        if(!found){
+        if (!found) {
             listaSzkola.add(_school)
         }
-        Log.wtf("test","dodawanie szkoly zakonczone")
         if (semester != null && semester.id != "") {
-            Log.wtf("test","dodawanie semst rozpoczęte $_semester")
 
             val semesterMap = hashMapOf("name" to semester.id)
             val dodawanaSemestr = dodawanaSzkola.collection("semestry").document(semester.id)
@@ -262,21 +264,20 @@ private fun addData(
                 }
             }
             found = false
-            if (semester.id != ""){
-                for (sem in _school.listaSemestr){
-                    if (sem.id == _semester!!.id){
+            if (semester.id != "") {
+                for (sem in _school.listaSemestr) {
+                    if (sem.id == _semester!!.id) {
                         _semester = sem
                         found = true
                         break
                     }
                 }
-                Log.d("test",found.toString())
-                if(!found){
+                Log.d("test", found.toString())
+                if (!found) {
                     _school.listaSemestr.add(_semester!!)
                 }
             }
 
-            Log.wtf("test","dodawanie semst zakonczone")
 
             if (subject != null && subject.id != "") {
                 val subjectMap = hashMapOf(
@@ -292,46 +293,21 @@ private fun addData(
                     }
                 }
                 found = false
-                    for (sub in _semester!!.listaSubject){
-                        if (sub.id == _subject!!.id){
-                            _subject = sub
-                            found = true
-                            break
-                        }
+                for (sub in _semester!!.listaSubject) {
+                    if (sub.id == _subject!!.id) {
+                        _subject = sub
+                        found = true
+                        break
                     }
-                    if(!found){
-                        _semester.listaSubject.add(_subject!!)
-                    }
+                }
+                if (!found) {
+                    _semester.listaSubject.add(_subject!!)
+                }
             }
         }
     }
 }
 
-/* tu jest stare pobieranie danych na razie zostawiam wykomentowane
-fun downloadData(): Flow<List<Szkola>> = flow {
-    val chmura = FirebaseFirestore.getInstance()
-    val currentUser = FirebaseAuth.getInstance().currentUser
-
-    if (currentUser != null) {
-        try {
-            val listaSzkola = chmura.collection("users").document(currentUser.uid).collection("szkoly").get().await().documents.map { documentSzkola ->
-                Szkola(documentSzkola.id, listaSemestr = documentSzkola.reference.collection("semestry").get().await()
-                    .documents.map { documentSemestr ->
-                        Semestr(documentSemestr.id, listaSubject = documentSemestr.reference.collection("przedmioty").get().await()
-                            .documents.map { documentPrzedmiot ->
-                                Subbject(documentPrzedmiot.id)
-                            })
-                    })
-            }
-            emit(listaSzkola)
-
-        } catch (e: Exception) {
-            emit(emptyList())
-        }
-    } else {
-        emit(emptyList())
-    }
-}*/
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ExpandableSchoolItem(school: Szkola, navController: NavController) {
@@ -377,11 +353,11 @@ fun ExpandableSchoolItem(school: Szkola, navController: NavController) {
 
     if (expanded) {
         for (semester in school.listaSemestr) {
-            ExpandableSemesterItem(semester, navController, path)
+            ExpandableSemesterItem(semester, navController, path, school)
         }
     }
     if (more_options) {
-        more_options = options(path, navController, null)
+        more_options = options(path, navController, null, school)
     }
 }
 
@@ -390,7 +366,8 @@ fun ExpandableSchoolItem(school: Szkola, navController: NavController) {
 fun ExpandableSemesterItem(
     semester: Semestr,
     navController: NavController,
-    path: MutableList<String>
+    path: MutableList<String>,
+    school: Szkola
 ) {
     var expanded by remember { mutableStateOf(false) }
     var more_options by remember { mutableStateOf(false) }
@@ -432,11 +409,11 @@ fun ExpandableSemesterItem(
 
     if (expanded) {
         for (subject in semester.listaSubject) {
-            SubjectItem(subject, navController, pathSem)
+            SubjectItem(subject, navController, pathSem, school)
         }
     }
     if (more_options) {
-        more_options = options(pathSem, navController, null)
+        more_options = options(pathSem, navController, null, school)
     }
 }
 
@@ -445,7 +422,8 @@ fun ExpandableSemesterItem(
 private fun SubjectItem(
     subject: Subbject,
     navController: NavController,
-    pathSem: MutableList<String>
+    pathSem: MutableList<String>,
+    school: Szkola
 ) {
     var more_options by remember { mutableStateOf(false) }
     val pathSub = mutableListOf(pathSem[0], pathSem[1], subject.id)
@@ -474,7 +452,7 @@ private fun SubjectItem(
         }
     }
     if (more_options) {
-        more_options = options(pathSub, navController, subject)
+        more_options = options(pathSub, navController, subject, school)
     }
 }
 
@@ -483,8 +461,10 @@ private fun SubjectItem(
 fun options(
     path: MutableList<String>,
     navController: NavController,
-    subject: Subbject?
+    subject: Subbject?,
+    school: Szkola
 ): Boolean {
+    val TAG = "PrzdemiotyScreen"
     var showBottomSheet by remember { mutableStateOf(true) }
     if (path.size > 0) {
         val listaSzkola = SchoolObject.getData()
@@ -492,29 +472,28 @@ fun options(
         val currentUser = FirebaseAuth.getInstance().currentUser
         val chmura = FirebaseFirestore.getInstance()
         val storage = FirebaseStorage.getInstance()
-        val userDoc = chmura.collection("users").document(FirebaseAuth.getInstance().currentUser!!.uid)
+        val userDoc =
+            chmura.collection("users").document(FirebaseAuth.getInstance().currentUser!!.uid)
         var showDialog by remember { mutableStateOf(false) }
-        var school = Szkola("", mutableListOf())
         var semestr = Semestr("", mutableListOf())
         var schoolName by remember { mutableStateOf(path[0]) }
         var semesterName by remember { mutableStateOf("") }
         var subjectName by remember { mutableStateOf("") }
         if (path.size > 1) {
             semesterName = path[1]
+
             if (path.size > 2) {
                 subjectName = path[2]
             }
         }
-        for (sch in listaSzkola) {
-            if (sch.id == schoolName){
-                school = sch
-                for (sem in sch.listaSemestr){
-                    if (sem.id == semesterName){
-                        semestr = sem
-                    }
+        if (path.size > 1) {
+            for (sem in school.listaSemestr) {
+                if (sem.id == path[1]) {
+                    semestr = sem
                 }
             }
         }
+
         val docRef = when (path.size) {
             1 -> userDoc
                 .collection("szkoly").document(path[0])
@@ -530,7 +509,8 @@ fun options(
 
             else -> userDoc
         }
-        if (currentUser != null){
+
+        if (currentUser != null) {
             ModalBottomSheet(
                 onDismissRequest = {
                     showBottomSheet = false
@@ -541,71 +521,67 @@ fun options(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.padding(start = 20.dp, bottom = 50.dp)
                 ) {
-                    if (path.size == 3){
-                        Option(Icons.Default.Edit, "Edytuj") {
-                            showDialog = true
-                        }
+//                    if (path.size == 3) {
+                    Option(Icons.Default.Edit, "Edytuj") {
+                        showDialog = true
                     }
+//                    }
                     if (showDialog) {
-
+                        var szkolaIsError by remember { mutableStateOf(false) }
+                        var semestrIsError by remember { mutableStateOf(false) }
+                        var subjectIsError by remember { mutableStateOf(false) }
 
                         AlertDialog(
 
-                        onDismissRequest = { showDialog = false },
-                        title = { Text("Edytuj nazwę szkoły lub kierunku") },
-                        text = {
-                            var focusSchool by remember { mutableStateOf(false) }
-                            var focusSemester by remember { mutableStateOf(false) }
-                            if (path.size > 0){
-                                Column {
-                                    /*OutlinedTextField(
-                                        value = schoolName,
-                                        onValueChange = { schoolName = it },
-                                        label = { Text("Nazwa szkoły lub kierunku") },
-                                        modifier = Modifier.onFocusChanged {
-                                            focusSchool = it.isFocused
-                                        }
-                                    )
-                                    if (focusSchool) {
-                                        Box {
-                                            LazyColumn(modifier = Modifier.padding(start = 10.dp)) {
-                                                items(listaSzkola) { school ->
-                                                    HorizontalDivider(color = Color.Gray)
+                            onDismissRequest = { showDialog = false },
+                            title = { Text("Edytuj nazwę szkoły lub kierunku") },
+                            text = {
+                                var focusSchool by remember { mutableStateOf(false) }
+                                var focusSemester by remember { mutableStateOf(false) }
+                                if (path.size > 0) {
+                                    Column {
+                                        OutlinedTextField(
+                                            value = schoolName,
+                                            onValueChange = {
+                                                schoolName = it
+                                                if (szkolaIsError) {
+                                                    szkolaIsError = false
+                                                }
+                                            },
+                                            label = {
+                                                Text(
+                                                    if (path.size == 1) {
+                                                        "Zmień Nazwę wybranej Szkoły/kierunku"
+                                                    } else {
+                                                        "Zmień folder na inną szkołę/kierunku"
+                                                    }
+                                                )
+                                            },
+                                            modifier = Modifier.onFocusChanged {
+                                                focusSchool = it.isFocused
+                                            },
+                                            isError = szkolaIsError,
+                                            supportingText = {
+                                                if (szkolaIsError) {
                                                     Text(
-                                                        text = school.id,
-                                                        modifier = Modifier
-                                                            .clickable {
-                                                                schoolName = school.id
-                                                                focusSchool = !focusSchool
-                                                            }
-                                                            .padding(8.dp)
-                                                            .fillMaxWidth()
+                                                        text = "nazwa: ${schoolName} już istnieje proszę użyć innej",
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        color = MaterialTheme.colorScheme.error
                                                     )
                                                 }
                                             }
-                                        }
-                                    }*/
-                                    if (path.size > 1){
-                                        /*OutlinedTextField(
-                                            value = semesterName,
-                                            onValueChange = { semesterName = it },
-                                            label = { Text("Nazwa lub numer semestru") },
-                                            modifier = Modifier.onFocusChanged {
-                                                focusSemester = it.isFocused
-                                            }
                                         )
-                                        if (focusSemester) {
-                                            var listaSemTym = school.listaSemestr
+                                        if (focusSchool && path.size != 1) {
                                             Box {
                                                 LazyColumn(modifier = Modifier.padding(start = 10.dp)) {
-                                                    items(listaSemTym) { semester ->
+                                                    items(listaSzkola) { school ->
                                                         HorizontalDivider(color = Color.Gray)
                                                         Text(
-                                                            text = semester.id,
+                                                            text = school.id,
                                                             modifier = Modifier
                                                                 .clickable {
-                                                                    semesterName = semester.id
-                                                                    focusSemester = !focusSemester
+                                                                    schoolName = school.id
+                                                                    focusSchool = !focusSchool
                                                                 }
                                                                 .padding(8.dp)
                                                                 .fillMaxWidth()
@@ -613,93 +589,162 @@ fun options(
                                                     }
                                                 }
                                             }
-                                        }*/
-                                        if (path.size>2){
+                                        }
+                                        if (path.size > 1) {
                                             OutlinedTextField(
-                                                value = subjectName,
-                                                onValueChange = { subjectName = it },
-                                                label = { Text("Nazwa Przedmiotu") }
+                                                value = semesterName,
+                                                onValueChange = {
+                                                    semesterName = it
+                                                    if (semestrIsError) {
+                                                        semestrIsError = false
+                                                    }
+                                                },
+                                                label = {
+                                                    Text(
+                                                        if (path.size == 1) {
+                                                            "Zmień Nazwę lub numer wybranego semestru"
+                                                        } else {
+                                                            "Zmień folder na inny semestr"
+                                                        }
+                                                    )
+                                                },
+                                                modifier = Modifier.onFocusChanged {
+                                                    focusSemester = it.isFocused
+                                                },
+                                                isError = semestrIsError,
+                                                supportingText = {
+                                                    if (semestrIsError) {
+                                                        Text(
+                                                            text = "nazwa: ${semesterName} już istnieje proszę użyć innej",
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            color = MaterialTheme.colorScheme.error
+                                                        )
+                                                    }
+                                                }
                                             )
+                                            if (focusSemester && path.size != 2) {
+                                                var listaSemTym = if (school.id != schoolName) {
+                                                    listaSzkola.find {
+                                                        it.id == schoolName
+
+                                                    }?.listaSemestr?.toList()
+                                                } else {
+                                                    school.listaSemestr
+                                                }
+                                                if (listaSemTym != null) {
+                                                    Box {
+                                                        LazyColumn(modifier = Modifier.padding(start = 10.dp)) {
+                                                            items(listaSemTym) { semester ->
+                                                                HorizontalDivider(color = Color.Gray)
+                                                                Text(
+                                                                    text = semester.id,
+                                                                    modifier = Modifier
+                                                                        .clickable {
+                                                                            semesterName =
+                                                                                semester.id
+                                                                            focusSemester =
+                                                                                !focusSemester
+                                                                        }
+                                                                        .padding(8.dp)
+                                                                        .fillMaxWidth()
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            if (path.size > 2) {
+                                                OutlinedTextField(
+                                                    value = subjectName,
+                                                    onValueChange = {
+                                                        subjectName = it
+                                                        if (subjectIsError) {
+                                                            subjectIsError = false
+                                                        }
+                                                    },
+                                                    label = { Text("Zmień nazwę przedmiotu") },
+                                                    isError = subjectIsError,
+                                                    supportingText = {
+                                                        if (subjectIsError) {
+                                                            Text(
+                                                                text = "nazwa: ${subject} już istnieje proszę użyć innej",
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                color = MaterialTheme.colorScheme.error
+                                                            )
+                                                        }
+                                                    }
+                                                )
+                                            }
                                         }
-                                    }
-
-                                    }
-
-                            }
-                        },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                Log.d("Edit", "confirm button")
-                                if (path.size > 0&& currentUser != null){
-                                    school.id = schoolName
-                                    if (path.size > 1 ){
-                                        semestr.id = semesterName
-                                        if (path.size> 2&& subject != null){
-                                            subject.id = subjectName
-                                        }
-                                    }
-
-                                    Log.d("dodawanie","dodaje do ${school.id} ${school.listaSemestr.size}")
-                                    addData(currentUser,
-                                        school,
-                                        Semestr("", mutableListOf()),
-                                        Subbject("",false, mutableListOf()), chmura,listaSzkola)
-                                    for (sem in school.listaSemestr){
-                                        Log.d("dodawanie","     dodaje do ${school.id} -${sem.id}")
-                                        addData(currentUser,
-                                            school,
-                                            sem,
-                                            Subbject("",false, mutableListOf()),
-                                            chmura,listaSzkola)
-                                        for (sub in sem.listaSubject){
-                                            Log.d("dodawanie","         dodaje do ${school.id} -${sem.id} - ${sub.id}")
-                                            addData(currentUser,school,sem,sub,chmura,listaSzkola)
-                                        }
-                                    }
-
-                                    chmura.runTransaction{ transaction ->
-
-                                        Log.d("usuwanie","         dodaje do ${school.id}")
-                                        transaction.delete(docRef)
                                     }
                                 }
-                                /*if (currentUser != null && path.size == 3) {
-                                    var subjectHolder = subject
-
-                                    subjectHolder!!.id = subjectName
-                                    chmura.runTransaction { transaction ->
-                                        Log.d("Edit", "start delete")
-                                        transaction.delete(docRef)
-                                        Log.d("Edit", "end delete")
-                                        addData(
-                                            currentUser,
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    var checked = true
+                                    val sz = listaSzkola.find {
+                                        it.id == schoolName
+                                    }
+                                    if (sz != null && path.size == 1 && school != sz) {
+                                        checked = false
+                                        szkolaIsError = true
+                                    }
+                                    val sem = if (sz != null) {
+                                        sz.listaSemestr.find {
+                                            it.id == semesterName
+                                        }
+                                    } else {
+                                        null
+                                    }
+                                    if (sem != null && path.size == 2 && semestr != sem) {
+                                        checked = false
+                                        semestrIsError = true
+                                    }
+                                    val sub = if (sem != null) {
+                                        sem.listaSubject.find {
+                                            it.id == subjectName
+                                        }
+                                    } else {
+                                        null
+                                    }
+                                    if (sub != null && path.size == 3 && subject != sub) {
+                                        checked = false
+                                        subjectIsError = true
+                                    }
+                                    Log.d(TAG, "options: 1 ${sz?.id} ${sem?.id} ${sub?.id}")
+                                    Log.d(
+                                        TAG,
+                                        "options: 2 ${school.id} ${semestr.id} ${subject?.id}"
+                                    )
+                                    if (checked) {
+//                                        Log.d(TAG, "options: ${sz}")
+                                        edit(
+                                            chmura,
                                             school,
                                             semestr,
-                                            subjectHolder,
-                                            chmura,
+                                            subject,
+                                            path,
+                                            schoolName,
+                                            semesterName,
+                                            subjectName,
                                             listaSzkola
                                         )
-                                        Log.d("Edit", "end delete2")
+                                        showDialog = false
+                                        refreshCurrentFragment(navController)
                                     }
-                                }*/
-                                
-                                showDialog = false
-                                refreshCurrentFragment(navController)
+                                    checked = true
+                                }) {
+                                    Text("Potwierdź")
+                                }
 
-                            }) {
-                                Text("Potwierdź")
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showDialog = false }) {
+                                    Text("Anuluj")
+                                }
                             }
-                            Log.d("Edit", "confirm button")
-
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showDialog = false }) {
-                                Text("Anuluj")
-                            }
-                            Log.d("Edit", "ended dismiss button ")
-                        }
-                    )
-                }
+                        )
+                    }
 
                     if (path.size == 3) {
                         val value = subject!!.ulubione
@@ -736,9 +781,9 @@ fun options(
 
                                 docRef.delete().addOnSuccessListener {
                                 }
-                                for (sem in school.listaSemestr){
-                                    for (sub in sem.listaSubject){
-                                        for (file in sub.imageUrls){
+                                for (sem in school.listaSemestr) {
+                                    for (sub in sem.listaSubject) {
+                                        for (file in sub.imageUrls) {
                                             storage.getReferenceFromUrl(file.Url).delete()
                                         }
                                     }
@@ -755,8 +800,8 @@ fun options(
                                     }
                                 docRef.delete().addOnSuccessListener {
                                 }
-                                for (sub in semestr.listaSubject){
-                                    for (file in sub.imageUrls){
+                                for (sub in semestr.listaSubject) {
+                                    for (file in sub.imageUrls) {
                                         storage.getReferenceFromUrl(file.Url).delete()
                                     }
                                 }
@@ -766,10 +811,10 @@ fun options(
                             3 -> {
                                 docRef.delete().addOnSuccessListener {
                                 }
-                                    storage.reference.child("users/${currentUser.uid}/${path[0]}/${path[1]}/${path[2]}")
-                                        .listAll().addOnSuccessListener { result ->
-                                }
-                                for (file in subject!!.imageUrls){
+                                storage.reference.child("users/${currentUser.uid}/${path[0]}/${path[1]}/${path[2]}")
+                                    .listAll().addOnSuccessListener { result ->
+                                    }
+                                for (file in subject!!.imageUrls) {
                                     storage.getReferenceFromUrl(file.Url).delete()
                                 }
                                 semestr.listaSubject.remove(subject)
@@ -804,8 +849,189 @@ private fun Option(icon: ImageVector, text: String, function: () -> Unit) {
         Text(text)
     }
 }
-private fun refreshCurrentFragment(navController: NavController){
+
+private fun refreshCurrentFragment(navController: NavController) {
     val id = navController.currentDestination?.id
-    navController.popBackStack(id!!,true)
+    navController.popBackStack(id!!, true)
     navController.navigate(id)
 }
+
+fun edit(
+    chmura: FirebaseFirestore,
+    school: Szkola,
+    semestr: Semestr,
+    subject: Subbject?,
+    path: MutableList<String>,
+    schoolName: String,
+    semesterName: String,
+    subjectName: String,
+    listaSzkola: MutableList<Szkola>
+) {
+    val Uid = FirebaseAuth.getInstance().currentUser?.uid
+    val szkolyFolder = FirebaseFirestore.getInstance().collection("users/$Uid/szkoly")
+    ProcessLifecycleOwner.get().lifecycleScope.launch {
+        if (school.id != schoolName && path.size == 1) {
+            school.id = schoolName
+            val schoolMap = hashMapOf("name" to schoolName)
+            val dodawanaSzkola = szkolyFolder.document("${schoolName}")
+            chmura.runTransaction { transaction ->
+                //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
+                if (!transaction.get(dodawanaSzkola).exists()) {
+                    transaction.set(dodawanaSzkola, schoolMap)
+                    transaction.delete(szkolyFolder.document("${path[0]}"))
+                }
+            }.await()
+            for (sem in school.listaSemestr) {
+                EditSemester(sem, szkolyFolder, schoolName, sem.id, chmura, mutableListOf(path[0],sem.id))
+            }
+        }
+        if (path.size == 2) {
+            if (school.id != schoolName || semestr.id != semesterName) {
+                EditSemester(semestr, szkolyFolder, schoolName, semesterName, chmura, path)
+                semestr.id = semesterName
+                var sch = listaSzkola.find {
+                    it.id == schoolName
+                }
+                if (sch == null) {
+                    listaSzkola.add(Szkola(schoolName, mutableListOf(semestr)))
+                    //w wszytkich tych przypadkach tak naprawdę aktualizujemy już istniejący document
+                    chmura.runTransaction { transaction ->
+                        transaction.set(
+                            szkolyFolder.document("${schoolName}"),
+                            mapOf("name" to schoolName)
+                        )
+                    }
+                } else {
+                    sch.listaSemestr.add(semestr)
+                    sch.listaSemestr.sortBy { it.id }
+                }
+
+                school.listaSemestr.remove(semestr)
+                school.listaSemestr.sortBy { it.id }
+            }
+        }
+        if (path.size == 3 && subject != null) {
+            if (school.id != schoolName || semestr.id != semesterName || subject.id != subjectName) {
+                EditSubject(
+                    subject,
+                    szkolyFolder,
+                    schoolName,
+                    semesterName,
+                    subjectName,
+                    chmura,
+                    path
+                )
+                subject.id = subjectName
+                val sch = listaSzkola.find {
+                    it.id == schoolName
+                }
+                if (sch == null) {
+
+                    listaSzkola.add(
+                        Szkola(
+                            schoolName, mutableListOf(
+                                Semestr(
+                                    semesterName,
+                                    mutableListOf(subject)
+                                )
+                            )
+                        )
+                    )
+                    chmura.runTransaction { transaction ->
+                        transaction.set(
+                            szkolyFolder.document("${schoolName}"),
+                            mapOf("name" to schoolName)
+                        )
+                        transaction.set(
+                            szkolyFolder.document("${schoolName}/semestry/${semesterName}"),
+                            mapOf("name" to semesterName)
+                        )
+                    }.await()
+                } else {
+                    val sem = sch.listaSemestr.find {
+                        it.id == semesterName
+                    }
+                    if (sem == null) {
+                        sch.listaSemestr.add(Semestr(semesterName, mutableListOf(subject)))
+                        chmura.runTransaction { transaction ->
+                            transaction.set(
+                                szkolyFolder.document("${schoolName}/semestry/${semesterName}"),
+                                mapOf("name" to semesterName)
+                            )
+                        }.await()
+                    } else {
+                        sem.listaSubject.add(subject)
+                        sem.listaSubject.sortBy { it.id }
+                    }
+                }
+
+                semestr.listaSubject.remove(subject)
+                semestr.listaSubject.sortBy { it.id }
+            }
+        }
+    }
+}
+
+private suspend fun EditSemester(
+    sem: Semestr,
+    szkolyFolder: CollectionReference,
+    schoolName: String,
+    semesterName: String,
+    chmura: FirebaseFirestore,
+    path: MutableList<String>
+) {
+    val semesterMap = hashMapOf("name" to semesterName)
+    val dodawanaSemestr = szkolyFolder.document("${schoolName}/semestry/${semesterName}")
+
+    chmura.runTransaction { transaction ->
+        //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
+        if (!transaction.get(dodawanaSemestr).exists()) {
+            transaction.set(dodawanaSemestr, semesterMap)
+        }
+        transaction.delete(szkolyFolder.document("${path[0]}/semestry/${path[1]}"))
+
+    }.await()
+
+    for (sub in sem.listaSubject) {
+        EditSubject(
+            sub,
+            szkolyFolder,
+            schoolName,
+            semesterName,
+            sub.id,
+            chmura,
+            mutableListOf(path[0], path[1], sub.id)
+        )
+    }
+}
+
+private suspend fun EditSubject(
+    sub: Subbject,
+    szkolyFolder: CollectionReference,
+    schoolName: String,
+    semesterName: String,
+    subjectName: String,
+    chmura: FirebaseFirestore,
+    path: MutableList<String>
+) {
+    val TAG = "usuwanie"
+    val listaUrlsTemp = mutableListOf<String>()
+    for (file in sub.imageUrls) {
+        listaUrlsTemp.add(file.Url)
+    }
+    val subjectMap = hashMapOf(
+        "name" to subjectName,
+        "ulubione" to sub.ulubione,
+        "files" to listaUrlsTemp
+    )
+    val dodawanaSubject =
+        szkolyFolder.document("${schoolName}/semestry/${semesterName}/przedmioty/${subjectName}")
+    chmura.runTransaction { transaction ->
+        //sprawdzanie czy dokument istnieje jeśli nie to go dodajemy
+        if (!transaction.get(dodawanaSubject).exists()) {
+            transaction.set(dodawanaSubject, subjectMap)
+        }
+        transaction.delete(szkolyFolder.document("${path[0]}/semestry/${path[1]}/przedmioty/${path[2]}"))
+    }.await()
+}
+
